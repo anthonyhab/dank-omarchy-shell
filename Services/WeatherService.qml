@@ -265,9 +265,10 @@ Singleton {
         if (root.retryAttempts < root.maxRetryAttempts) {
             retryTimer.start()
         } else {
-            root.weather.available = false
-            root.weather.loading = false
             root.retryAttempts = 0
+            if (!root.weather.available) {
+                root.weather.loading = false
+            }
             const backoffDelay = Math.min(60000 * Math.pow(2, persistentRetryCount), 300000)
             persistentRetryCount++
             persistentRetryTimer.interval = backoffDelay
@@ -523,6 +524,9 @@ Singleton {
         running: false
         repeat: false
         onTriggered: {
+            if (!root.weather.available) {
+                root.weather.loading = true
+            }
             root.fetchWeather()
         }
     }

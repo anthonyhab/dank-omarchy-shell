@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Effects
 import qs.Common
 import qs.Services
@@ -6,6 +7,9 @@ import qs.Widgets
 
 Card {
     id: root
+
+    Component.onCompleted: WeatherService.addRef()
+    Component.onDestruction: WeatherService.removeRef()
 
     Column {
         anchors.centerIn: parent
@@ -20,10 +24,18 @@ Card {
         }
 
         StyledText {
-            text: "No Weather"
+            text: WeatherService.weather.loading ? "Loading..." : "No Weather"
             font.pixelSize: Theme.fontSizeSmall
             color: Qt.rgba(Theme.surfaceText.r, Theme.surfaceText.g, Theme.surfaceText.b, 0.7)
             anchors.horizontalCenter: parent.horizontalCenter
+        }
+
+        Button {
+            text: "Refresh"
+            flat: true
+            visible: !WeatherService.weather.loading
+            anchors.horizontalCenter: parent.horizontalCenter
+            onClicked: WeatherService.forceRefresh()
         }
     }
 
