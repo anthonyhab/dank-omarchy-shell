@@ -142,7 +142,6 @@ shell.qml           # Main entry point (minimal orchestration)
    - **ProcessList/**: System monitoring with process management and performance metrics
    - **Dock/**: Application dock with running apps and window management
    - **Lock/**: Screen lock system with authentication
-   - **CentcomCenter/**: Calendar, weather, and media widgets
 
 5. **Modals/** - Full-screen overlays (10 files)
    - Modal system for settings, clipboard history, file browser, network info, power menu

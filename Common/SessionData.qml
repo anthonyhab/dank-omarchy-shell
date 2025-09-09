@@ -266,6 +266,9 @@ Singleton {
         saveSettings()
 
         if (typeof Theme !== "undefined") {
+            if (Theme.currentTheme === Theme.dynamic) {
+                Theme.extractColors()
+            }
             Theme.generateSystemThemesFromCurrentTheme()
         }
     }
@@ -275,6 +278,9 @@ Singleton {
         saveSettings()
 
         if (typeof Theme !== "undefined") {
+            if (Theme.currentTheme === Theme.dynamic) {
+                Theme.extractColors()
+            }
             Theme.generateSystemThemesFromCurrentTheme()
         }
     }

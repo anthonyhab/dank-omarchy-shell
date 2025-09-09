@@ -556,22 +556,27 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
 
-                                DankTabBar {
-                                    id: modeTabBar
-
+                                Item {
                                     width: 200
-                                    height: 32
-                                    model: [{
-                                            "text": "Interval",
-                                            "icon": "schedule"
-                                        }, {
-                                            "text": "Time",
-                                            "icon": "access_time"
-                                        }]
-                                    currentIndex: SessionData.wallpaperCyclingMode === "time" ? 1 : 0
-                                    onTabClicked: index => {
-                                                      SessionData.setWallpaperCyclingMode(index === 1 ? "time" : "interval")
-                                                  }
+                                    height: 45 + Theme.spacingM
+                                    
+                                    DankTabBar {
+                                        id: modeTabBar
+
+                                        width: 200
+                                        height: 45
+                                        model: [{
+                                                "text": "Interval",
+                                                "icon": "schedule"
+                                            }, {
+                                                "text": "Time",
+                                                "icon": "access_time"
+                                            }]
+                                        currentIndex: SessionData.wallpaperCyclingMode === "time" ? 1 : 0
+                                        onTabClicked: index => {
+                                                          SessionData.setWallpaperCyclingMode(index === 1 ? "time" : "interval")
+                                                      }
+                                    }
                                 }
                             }
 
@@ -863,27 +868,41 @@ Item {
                             }
                         }
 
-                        DankTabBar {
-                            id: modeTabBarNight
+                        Item {
                             width: 200
-                            height: 32
-                            model: [{
-                                    "text": "Time",
-                                    "icon": "access_time"
-                                }, {
-                                    "text": "Location",
-                                    "icon": "place"
-                                }]
+                            height: 45 + Theme.spacingM
+                            
+                            DankTabBar {
+                                id: modeTabBarNight
+                                width: 200
+                                height: 45
+                                model: [{
+                                        "text": "Time",
+                                        "icon": "access_time"
+                                    }, {
+                                        "text": "Location",
+                                        "icon": "place"
+                                    }]
 
-                            Component.onCompleted: {
-                                currentIndex = SessionData.nightModeAutoMode === "location" ? 1 : 0
+                                Component.onCompleted: {
+                                    currentIndex = SessionData.nightModeAutoMode === "location" ? 1 : 0
+                                    Qt.callLater(updateIndicator)
+                                }
+
+                                onTabClicked: index => {
+                                                  console.log("Tab clicked:", index, "Setting mode to:", index === 1 ? "location" : "time")
+                                                  DisplayService.setNightModeAutomationMode(index === 1 ? "location" : "time")
+                                                  currentIndex = index
+                                              }
+                                              
+                                Connections {
+                                    target: SessionData
+                                    function onNightModeAutoModeChanged() {
+                                        modeTabBarNight.currentIndex = SessionData.nightModeAutoMode === "location" ? 1 : 0
+                                        Qt.callLater(modeTabBarNight.updateIndicator)
+                                    }
+                                }
                             }
-
-                            onTabClicked: index => {
-                                              console.log("Tab clicked:", index, "Setting mode to:", index === 1 ? "location" : "time")
-                                              DisplayService.setNightModeAutomationMode(index === 1 ? "location" : "time")
-                                              currentIndex = index
-                                          }
                         }
 
                         Column {

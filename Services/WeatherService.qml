@@ -17,6 +17,8 @@ Singleton {
                                "loading": true,
                                "temp": 0,
                                "tempF": 0,
+                               "feelsLike": 0,
+                               "feelsLikeF": 0,
                                "city": "",
                                "country": "",
                                "wCode": 0,
@@ -27,7 +29,8 @@ Singleton {
                                "uv": 0,
                                "pressure": 0,
                                "precipitationProbability": 0,
-                               "isDay": true
+                               "isDay": true,
+                               "forecast": []
                            })
 
     property var location: null
@@ -120,6 +123,21 @@ Singleton {
             return "--"
         }
     }
+    
+    function formatForecastDay(isoString, index) {
+        if (!isoString) return "--"
+        
+        try {
+            const date = new Date(isoString)
+            if (index === 0) return qsTr("Today")
+            if (index === 1) return qsTr("Tomorrow")
+            
+            const locale = Qt.locale()
+            return locale.dayName(date.getDay(), Locale.ShortFormat)
+        } catch (e) {
+            return "--"
+        }
+    }
 
     function getWeatherApiUrl() {
         if (!location) {
@@ -130,9 +148,9 @@ Singleton {
             "latitude=" + location.latitude,
             "longitude=" + location.longitude,
             "current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,surface_pressure,wind_speed_10m",
-            "daily=sunrise,sunset",
+            "daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max",
             "timezone=auto",
-            "forecast_days=1"
+            "forecast_days=7"
         ]
         
         if (SettingsData.useFahrenheit) {
@@ -207,23 +225,19 @@ Singleton {
         }
 
         if (weatherFetcher.running) {
-            console.log("Weather fetch already in progress, skipping")
             return
         }
 
         const now = Date.now()
         if (now - root.lastFetchTime < root.minFetchInterval) {
-            console.log("Weather fetch throttled, too soon since last fetch")
             return
         }
 
         const apiUrl = getWeatherApiUrl()
         if (!apiUrl) {
-            console.warn("Cannot fetch weather: no location available")
             return
         }
 
-        console.log("Fetching weather from:", apiUrl)
         root.lastFetchTime = now
         root.weather.loading = true
         weatherFetcher.command = ["bash", "-c", "curl -s --connect-timeout 10 --max-time 30 '" + apiUrl + "'"]
@@ -231,7 +245,6 @@ Singleton {
     }
 
     function forceRefresh() {
-        console.log("Force refreshing weather")
         root.lastFetchTime = 0 // Reset throttle
         fetchWeather()
     }
@@ -250,16 +263,13 @@ Singleton {
     function handleWeatherFailure() {
         root.retryAttempts++
         if (root.retryAttempts < root.maxRetryAttempts) {
-            console.log("Weather fetch failed, retrying in " + (root.retryDelay / 1000) + "s (attempt " + root.retryAttempts + "/" + root.maxRetryAttempts + ")")
             retryTimer.start()
         } else {
-            console.warn("Weather fetch failed after maximum retry attempts, will keep trying...")
             root.weather.available = false
             root.weather.loading = false
             root.retryAttempts = 0
             const backoffDelay = Math.min(60000 * Math.pow(2, persistentRetryCount), 300000)
             persistentRetryCount++
-            console.log("Scheduling persistent retry in " + (backoffDelay / 1000) + "s")
             persistentRetryTimer.interval = backoffDelay
             persistentRetryTimer.start()
         }
@@ -274,7 +284,6 @@ Singleton {
             onStreamFinished: {
                 const raw = text.trim()
                 if (!raw || raw[0] !== "{") {
-                    console.warn("No valid IP location data received")
                     root.handleWeatherFailure()
                     return
                 }
@@ -300,7 +309,6 @@ Singleton {
                         throw new Error("Invalid coordinate values")
                     }
                     
-                    console.log("Got IP-based location:", lat, lon, "at", city)
                     root.location = {
                         city: city,
                         latitude: lat,
@@ -308,7 +316,6 @@ Singleton {
                     }
                     fetchWeather()
                 } catch (e) {
-                    console.warn("Failed to parse IP location data:", e.message)
                     root.handleWeatherFailure()
                 }
             }
@@ -316,7 +323,6 @@ Singleton {
         
         onExited: exitCode => {
             if (exitCode !== 0) {
-                console.warn("IP location fetch failed with exit code:", exitCode)
                 root.handleWeatherFailure()
             }
         }
@@ -330,7 +336,6 @@ Singleton {
             onStreamFinished: {
                 const raw = text.trim()
                 if (!raw || raw[0] !== "{") {
-                    console.warn("No valid reverse geocode data received")
                     root.handleWeatherFailure()
                     return
                 }
@@ -346,10 +351,8 @@ Singleton {
                         longitude: parseFloat(data.lon)
                     }
                     
-                    console.log("Location updated:", root.location.city, root.location.country)
                     fetchWeather()
                 } catch (e) {
-                    console.warn("Failed to parse reverse geocode data:", e.message)
                     root.handleWeatherFailure()
                 }
             }
@@ -357,7 +360,6 @@ Singleton {
         
         onExited: exitCode => {
             if (exitCode !== 0) {
-                console.warn("Reverse geocode failed with exit code:", exitCode)
                 root.handleWeatherFailure()
             }
         }
@@ -371,7 +373,6 @@ Singleton {
             onStreamFinished: {
                 const raw = text.trim()
                 if (!raw || raw[0] !== "{") {
-                    console.warn("No valid geocode data received")
                     root.handleWeatherFailure()
                     return
                 }
@@ -393,10 +394,8 @@ Singleton {
                         longitude: result.longitude
                     }
                     
-                    console.log("Location updated:", root.location.city, root.location.country)
                     fetchWeather()
                 } catch (e) {
-                    console.warn("Failed to parse geocode data:", e.message)
                     root.handleWeatherFailure()
                 }
             }
@@ -404,7 +403,6 @@ Singleton {
         
         onExited: exitCode => {
             if (exitCode !== 0) {
-                console.warn("City geocode failed with exit code:", exitCode)
                 root.handleWeatherFailure()
             }
         }
@@ -418,7 +416,6 @@ Singleton {
             onStreamFinished: {
                 const raw = text.trim()
                 if (!raw || raw[0] !== "{") {
-                    console.warn("No valid weather data received")
                     root.handleWeatherFailure()
                     return
                 }
@@ -436,12 +433,38 @@ Singleton {
                     
                     const tempC = current.temperature_2m || 0
                     const tempF = SettingsData.useFahrenheit ? tempC : (tempC * 9/5 + 32)
+                    const feelsLikeC = current.apparent_temperature || tempC
+                    const feelsLikeF = SettingsData.useFahrenheit ? feelsLikeC : (feelsLikeC * 9/5 + 32)
+                    
+                    const forecast = []
+                    if (daily.time && daily.time.length > 0) {
+                        for (let i = 0; i < Math.min(daily.time.length, 7); i++) {
+                            const tempMinC = daily.temperature_2m_min?.[i] || 0
+                            const tempMaxC = daily.temperature_2m_max?.[i] || 0
+                            const tempMinF = SettingsData.useFahrenheit ? tempMinC : (tempMinC * 9/5 + 32)
+                            const tempMaxF = SettingsData.useFahrenheit ? tempMaxC : (tempMaxC * 9/5 + 32)
+                            
+                            forecast.push({
+                                "day": formatForecastDay(daily.time[i], i),
+                                "wCode": daily.weather_code?.[i] || 0,
+                                "tempMin": Math.round(tempMinC),
+                                "tempMax": Math.round(tempMaxC),
+                                "tempMinF": Math.round(tempMinF),
+                                "tempMaxF": Math.round(tempMaxF),
+                                "precipitationProbability": Math.round(daily.precipitation_probability_max?.[i] || 0),
+                                "sunrise": daily.sunrise?.[i] ? formatTime(daily.sunrise[i]) : "",
+                                "sunset": daily.sunset?.[i] ? formatTime(daily.sunset[i]) : ""
+                            })
+                        }
+                    }
                     
                     root.weather = {
                         "available": true,
                         "loading": false,
                         "temp": Math.round(tempC),
                         "tempF": Math.round(tempF),
+                        "feelsLike": Math.round(feelsLikeC),
+                        "feelsLikeF": Math.round(feelsLikeF),
                         "city": root.location?.city || "Unknown",
                         "country": root.location?.country || "Unknown",
                         "wCode": current.weather_code || 0,
@@ -452,16 +475,15 @@ Singleton {
                         "uv": 0,
                         "pressure": Math.round(current.surface_pressure || 0),
                         "precipitationProbability": Math.round(current.precipitation || 0),
-                        "isDay": Boolean(current.is_day)
+                        "isDay": Boolean(current.is_day),
+                        "forecast": forecast
                     }
 
                     const displayTemp = SettingsData.useFahrenheit ? root.weather.tempF : root.weather.temp
                     const unit = SettingsData.useFahrenheit ? "°F" : "°C"
-                    console.log("Weather updated:", root.weather.city, displayTemp + unit)
 
                     root.handleWeatherSuccess()
                 } catch (e) {
-                    console.warn("Failed to parse weather data:", e.message)
                     root.handleWeatherFailure()
                 }
             }
@@ -469,7 +491,6 @@ Singleton {
 
         onExited: exitCode => {
             if (exitCode !== 0) {
-                console.warn("Weather fetch failed with exit code:", exitCode)
                 root.handleWeatherFailure()
             }
         }
@@ -502,7 +523,6 @@ Singleton {
         running: false
         repeat: false
         onTriggered: {
-            console.log("Persistent retry attempt...")
             root.fetchWeather()
         }
     }
@@ -510,13 +530,14 @@ Singleton {
     Component.onCompleted: {
         
         SettingsData.weatherCoordinatesChanged.connect(() => {
-                                                           console.log("Weather coordinates changed, refreshing location")
                                                            root.location = null
                                                            root.weather = {
                                                                "available": false,
                                                                "loading": true,
                                                                "temp": 0,
                                                                "tempF": 0,
+                                                               "feelsLike": 0,
+                                                               "feelsLikeF": 0,
                                                                "city": "",
                                                                "country": "",
                                                                "wCode": 0,
@@ -527,27 +548,28 @@ Singleton {
                                                                "uv": 0,
                                                                "pressure": 0,
                                                                "precipitationProbability": 0,
-                                                               "isDay": true
+                                                               "isDay": true,
+                                                               "forecast": []
                                                            }
                                                            root.lastFetchTime = 0
                                                            root.forceRefresh()
                                                        })
 
         SettingsData.weatherLocationChanged.connect(() => {
-                                                        console.log("Weather location display name changed, refreshing location")
                                                         root.location = null
                                                         root.lastFetchTime = 0
                                                         root.forceRefresh()
                                                     })
 
         SettingsData.useAutoLocationChanged.connect(() => {
-                                                        console.log("Auto location setting changed, refreshing location")
                                                         root.location = null
                                                         root.weather = {
                                                             "available": false,
                                                             "loading": true,
                                                             "temp": 0,
                                                             "tempF": 0,
+                                                            "feelsLike": 0,
+                                                            "feelsLikeF": 0,
                                                             "city": "",
                                                             "country": "",
                                                             "wCode": 0,
@@ -558,20 +580,19 @@ Singleton {
                                                             "uv": 0,
                                                             "pressure": 0,
                                                             "precipitationProbability": 0,
-                                                            "isDay": true
+                                                            "isDay": true,
+                                                            "forecast": []
                                                         }
                                                         root.lastFetchTime = 0
                                                         root.forceRefresh()
                                                     })
                                                     
         SettingsData.useFahrenheitChanged.connect(() => {
-                                                       console.log("Temperature unit changed, refreshing weather")
                                                        root.lastFetchTime = 0
                                                        root.forceRefresh()
                                                    })
 
         SettingsData.weatherEnabledChanged.connect(() => {
-                                                       console.log("Weather enabled setting changed:", SettingsData.weatherEnabled)
                                                        if (SettingsData.weatherEnabled && root.refCount > 0 && !root.weather.available) {
                                                            root.forceRefresh()
                                                        } else if (!SettingsData.weatherEnabled) {

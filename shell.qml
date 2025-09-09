@@ -13,7 +13,7 @@ import qs.Modals.Settings
 import qs.Modals.Spotlight
 import qs.Modules
 import qs.Modules.AppDrawer
-import qs.Modules.CentcomCenter
+import qs.Modules.DankDash
 import qs.Modules.ControlCenter
 import qs.Modules.Dock
 import qs.Modules.Lock
@@ -64,13 +64,19 @@ ShellRoot {
     }
 
     Loader {
-        id: centcomPopoutLoader
+        id: dankDashPopoutLoader
 
         active: false
+        asynchronous: true
 
         sourceComponent: Component {
-            CentcomPopout {
-                id: centcomPopout
+            DankDashPopout {
+                id: dankDashPopout
+                
+                // Ensure it starts invisible
+                Component.onCompleted: {
+                    calendarVisible = false
+                }
             }
         }
     }
