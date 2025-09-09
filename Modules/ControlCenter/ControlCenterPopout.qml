@@ -51,8 +51,8 @@ DankPopout {
     signal lockRequested
 
     popupWidth: 550
-    popupHeight: Math.min(Screen.height - 100, contentLoader.item && contentLoader.item.implicitHeight > 0 ? contentLoader.item.implicitHeight + 20 : 400)
-    triggerX: Screen.width - 600 - Theme.spacingL
+    popupHeight: Math.min((triggerScreen?.height ?? 1080) - 100, contentLoader.item && contentLoader.item.implicitHeight > 0 ? contentLoader.item.implicitHeight + 20 : 400)
+    triggerX: (triggerScreen?.width ?? 1920) - 600 - Theme.spacingL
     triggerY: Theme.barHeight - 4 + SettingsData.topBarSpacing + Theme.spacingXS
     triggerWidth: 80
     positioning: "center"
@@ -62,36 +62,39 @@ DankPopout {
 
     onShouldBeVisibleChanged: {
         if (shouldBeVisible) {
-            NetworkService.autoRefreshEnabled = NetworkService.wifiEnabled
-            if (UserInfoService)
-                UserInfoService.getUptime()
+            Qt.callLater(() => {
+                NetworkService.autoRefreshEnabled = NetworkService.wifiEnabled
+                if (UserInfoService)
+                    UserInfoService.getUptime()
+            })
         } else {
-            NetworkService.autoRefreshEnabled = false
-            if (BluetoothService.adapter
-                    && BluetoothService.adapter.discovering)
-                BluetoothService.adapter.discovering = false
+            Qt.callLater(() => {
+                NetworkService.autoRefreshEnabled = false
+                if (BluetoothService.adapter
+                        && BluetoothService.adapter.discovering)
+                    BluetoothService.adapter.discovering = false
+            })
         }
     }
 
     content: Component {
-        Item {
-            implicitHeight: controlContent.implicitHeight
+        Rectangle {
+            id: controlContent
+            
+            implicitHeight: mainColumn.implicitHeight + Theme.spacingM
             property alias bluetoothCodecSelector: bluetoothCodecSelector
             
-            Rectangle {
-                    id: controlContent
-
-                    anchors.fill: parent
-                    implicitHeight: mainColumn.implicitHeight + Theme.spacingM
-
-                    color: Theme.popupBackground()
-                    radius: Theme.cornerRadius
-                    border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                          Theme.outline.b, 0.08)
-                    border.width: 1
-                    antialiasing: true
-                    smooth: true
-                    z: 0
+            color: {
+                const transparency = Theme.popupTransparency || 0.92
+                const surface = Theme.surfaceContainer || Qt.rgba(0.1, 0.1, 0.1, 1)
+                return Qt.rgba(surface.r, surface.g, surface.b, transparency)
+            }
+            radius: Theme.cornerRadius
+            border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
+                                  Theme.outline.b, 0.08)
+            border.width: 1
+            antialiasing: true
+            smooth: true
 
             Column {
                 id: mainColumn
@@ -705,7 +708,6 @@ DankPopout {
                         onClicked: Theme.toggleLightMode()
                     }
                 }
-            }
             }
             
             Details.BluetoothCodecSelector {
