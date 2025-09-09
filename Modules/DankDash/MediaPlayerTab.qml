@@ -658,7 +658,7 @@ Item {
             // Audio Devices
             DankFlickable {
                 width: parent.width
-                height: 240
+                height: parent.height - y
                 contentHeight: deviceColumn.height
                 clip: true
 
