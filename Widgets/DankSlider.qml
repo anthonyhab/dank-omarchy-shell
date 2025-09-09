@@ -157,8 +157,10 @@ Item {
                     preventStealing: true
                     acceptedButtons: Qt.LeftButton
                     onWheel: wheelEvent => {
-                                 if (!slider.wheelEnabled)
-                                 return
+                                 if (!slider.wheelEnabled) {
+                                     wheelEvent.accepted = false
+                                     return
+                                 }
                                  let step = Math.max(1, (maximum - minimum) / 20)
                                  let newValue = wheelEvent.angleDelta.y > 0 ? Math.min(maximum, value + step) : Math.max(minimum, value - step)
                                  newValue = Math.round(newValue)
