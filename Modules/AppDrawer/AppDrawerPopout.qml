@@ -415,6 +415,7 @@ DankPopout {
                                             font.pixelSize: Theme.fontSizeMedium
                                             color: Theme.surfaceVariantText
                                             elide: Text.ElideRight
+                                            maximumLineCount: 1
                                             visible: appList.showDescription && model.comment && model.comment.length > 0
                                         }
                                     }
