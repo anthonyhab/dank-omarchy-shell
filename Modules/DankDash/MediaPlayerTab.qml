@@ -16,11 +16,18 @@ Item {
     property MprisPlayer activePlayer: MprisController.activePlayer
     property var allPlayers: MprisController.availablePlayers
 
+    onActivePlayerChanged: {
+        if (activePlayer) {
+            lastValidTitle = ""
+            lastValidArtist = ""
+            lastValidAlbum = ""
+            lastValidArtUrl = ""
+        }
+    }
+
     onAllPlayersChanged: {
-        console.log("allPlayers changed:", allPlayers?.length || 0)
         if (allPlayers) {
             for (let i = 0; i < allPlayers.length; i++) {
-                console.log(`  Player ${i}:`, allPlayers[i]?.identity || "no identity")
             }
         }
     }
@@ -124,7 +131,7 @@ Item {
                     const parts = sourceString.split("/")
                     sourceDomain = parts.length > 2 ? parts[2] : "unknown-url"
                 }
-                console.log(`ColorQuantizer loading art for ${playerName} from ${sourceDomain}:`, source)
+
             }
         }
 
@@ -276,7 +283,7 @@ Item {
         Rectangle {
             id: audioDevicesDropdown
             width: 280 
-            height: audioDevicesButton.devicesExpanded ? Math.max(Math.min(140, audioDevicesDropdown.availableDevices.length * 40 + 60), Math.min(180, audioDevicesDropdown.availableDevices.length * 40 + 60)) : 0
+            height: audioDevicesButton.devicesExpanded ? Math.max(200, Math.min(280, audioDevicesDropdown.availableDevices.length * 50 + 100)) : 0
             x: parent.width + Theme.spacingS 
             y: 180  
             visible: audioDevicesButton.devicesExpanded
@@ -287,10 +294,7 @@ Item {
                 return node.audio && node.isSink && !node.isStream
             })
             
-            Component.onCompleted: {
-                console.log("Available devices count:", availableDevices.length)
-                console.log("Devices expanded:", audioDevicesButton.devicesExpanded)
-            }
+
             
             color: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.98)
             border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.6)
@@ -410,9 +414,7 @@ Item {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        console.log("Audio device clicked:", modelData ? AudioService.displayName(modelData) : "null")
                                         if (modelData) {
-                                            console.log("Setting preferredDefaultAudioSink to:", modelData.name)
                                             Pipewire.preferredDefaultAudioSink = modelData
                                             console.log("Current default sink after change:", AudioService.sink ? AudioService.sink.name : "null")
                                         }
@@ -437,7 +439,7 @@ Item {
         Rectangle {
             id: playerSelectorDropdown
             width: 240
-            height: playerSelectorButton.playersExpanded ? Math.max(Math.min(140, (allPlayers?.length || 0) * 40 + 60), Math.min(160, (allPlayers?.length || 0) * 40 + 60)) : 0
+            height: playerSelectorButton.playersExpanded ? Math.max(180, Math.min(240, (root.allPlayers?.length || 0) * 50 + 80)) : 0
             x: parent.width + Theme.spacingS
             y: 130
             visible: playerSelectorButton.playersExpanded
@@ -624,7 +626,7 @@ Item {
                         
                         readonly property real centerX: width / 2
                         readonly property real centerY: height / 2
-                        readonly property real baseRadius: Math.min(width, height) * 0.35
+                        readonly property real baseRadius: Math.min(width, height) * 0.41
                         readonly property int segments: 24
                         
                         property var audioLevels: {
@@ -725,7 +727,7 @@ Item {
                     }
 
                     Rectangle {
-                        width: parent.width * 0.75
+                        width: parent.width * 0.88
                         height: width
                         radius: width / 2
                         color: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.3)
@@ -813,11 +815,12 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
 
                     StyledText {
-                        text: (activePlayer && activePlayer.trackTitle) || lastValidTitle || "Unknown Track"
-                        onTextChanged: {
+                        text: {
                             if (activePlayer && activePlayer.trackTitle) {
                                 lastValidTitle = activePlayer.trackTitle
+                                return activePlayer.trackTitle
                             }
+                            return lastValidTitle || "Unknown Track"
                         }
                         font.pixelSize: Theme.fontSizeLarge
                         font.weight: Font.Bold
@@ -830,11 +833,12 @@ Item {
                     }
 
                     StyledText {
-                        text: (activePlayer && activePlayer.trackArtist) || lastValidArtist || "Unknown Artist"
-                        onTextChanged: {
+                        text: {
                             if (activePlayer && activePlayer.trackArtist) {
                                 lastValidArtist = activePlayer.trackArtist
+                                return activePlayer.trackArtist
                             }
+                            return lastValidArtist || "Unknown Artist"
                         }
                         font.pixelSize: Theme.fontSizeMedium
                         color: Qt.rgba(Theme.surfaceText.r, Theme.surfaceText.g, Theme.surfaceText.b, 0.8)
@@ -846,11 +850,12 @@ Item {
                     }
 
                     StyledText {
-                        text: (activePlayer && activePlayer.trackAlbum) || lastValidAlbum || ""
-                        onTextChanged: {
+                        text: {
                             if (activePlayer && activePlayer.trackAlbum) {
                                 lastValidAlbum = activePlayer.trackAlbum
+                                return activePlayer.trackAlbum
                             }
+                            return lastValidAlbum || ""
                         }
                         font.pixelSize: Theme.fontSizeSmall
                         color: Qt.rgba(Theme.surfaceText.r, Theme.surfaceText.g, Theme.surfaceText.b, 0.6)
@@ -872,8 +877,9 @@ Item {
                     anchors.bottomMargin: 0
 
                     Item {
-                        width: parent.width
+                        width: parent.width * 0.8
                         height: 20
+                        anchors.horizontalCenter: parent.horizontalCenter
 
                         Loader {
                             anchors.fill: parent
@@ -1039,8 +1045,9 @@ Item {
                     }
 
                     Item {
-                        width: parent.width
+                        width: parent.width * 0.8
                         height: 20
+                        anchors.horizontalCenter: parent.horizontalCenter
 
                         StyledText {
                             anchors.left: parent.left
@@ -1284,9 +1291,7 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    console.log("Player selector clicked, players:", allPlayers?.length || 0)
                     parent.playersExpanded = !parent.playersExpanded
-                    console.log("Players expanded:", parent.playersExpanded)
                 }
             }
 
