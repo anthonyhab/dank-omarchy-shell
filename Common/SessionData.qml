@@ -44,12 +44,7 @@ Singleton {
     property int wallpaperCyclingInterval: 300 // seconds (5 minutes)
     property string wallpaperCyclingTime: "06:00" // HH:mm format
     property string lastBrightnessDevice: ""
-    property string notepadContent: ""
-    property string notepadCurrentFileName: ""
-    property string notepadCurrentFileUrl: ""
-    property string notepadLastSavedContent: ""
-    property var notepadTabs: []
-    property int notepadCurrentTabIndex: 0
+    property bool notepadHasContent: false
 
     Component.onCompleted: {
         loadSettings()
@@ -104,44 +99,16 @@ Singleton {
                 wallpaperCyclingInterval = settings.wallpaperCyclingInterval !== undefined ? settings.wallpaperCyclingInterval : 300
                 wallpaperCyclingTime = settings.wallpaperCyclingTime !== undefined ? settings.wallpaperCyclingTime : "06:00"
                 lastBrightnessDevice = settings.lastBrightnessDevice !== undefined ? settings.lastBrightnessDevice : ""
-                notepadContent = settings.notepadContent !== undefined ? settings.notepadContent : ""
-                
+                notepadHasContent = settings.notepadHasContent !== undefined ? settings.notepadHasContent : false
+
                 // Generate system themes but don't override user's theme choice
                 if (typeof Theme !== "undefined") {
                     Theme.generateSystemThemesFromCurrentTheme()
                 }
-                notepadCurrentFileName = settings.notepadCurrentFileName !== undefined ? settings.notepadCurrentFileName : ""
-                notepadCurrentFileUrl = settings.notepadCurrentFileUrl !== undefined ? settings.notepadCurrentFileUrl : ""
-                notepadLastSavedContent = settings.notepadLastSavedContent !== undefined ? settings.notepadLastSavedContent : ""
-                notepadTabs = settings.notepadTabs !== undefined ? settings.notepadTabs : []
-                notepadCurrentTabIndex = settings.notepadCurrentTabIndex !== undefined ? settings.notepadCurrentTabIndex : 0
-                
-                // Migrate legacy single notepad to tabs if needed
-                if (notepadTabs.length === 0 && (notepadContent || notepadCurrentFileName)) {
-                    notepadTabs = [{
-                        id: Date.now(),
-                        title: notepadCurrentFileName || "Untitled",
-                        content: notepadContent,
-                        fileName: notepadCurrentFileName,
-                        fileUrl: notepadCurrentFileUrl,
-                        lastSavedContent: notepadLastSavedContent,
-                        hasUnsavedChanges: false
-                    }]
-                    notepadCurrentTabIndex = 0
-                }
-                
-                // Ensure at least one tab exists
-                if (notepadTabs.length === 0) {
-                    notepadTabs = [{
-                        id: Date.now(),
-                        title: "Untitled",
-                        content: "",
-                        fileName: "",
-                        fileUrl: "",
-                        lastSavedContent: "",
-                        hasUnsavedChanges: false
-                    }]
-                    notepadCurrentTabIndex = 0
+
+                // Migration logic for existing notepad data
+                if (typeof NotepadStorageService !== "undefined") {
+                    migrateNotepadData(settings)
                 }
             }
         } catch (e) {
@@ -179,12 +146,7 @@ Singleton {
                                                 "wallpaperCyclingInterval": wallpaperCyclingInterval,
                                                 "wallpaperCyclingTime": wallpaperCyclingTime,
                                                 "lastBrightnessDevice": lastBrightnessDevice,
-                                                "notepadContent": notepadContent,
-                                                "notepadCurrentFileName": notepadCurrentFileName,
-                                                "notepadCurrentFileUrl": notepadCurrentFileUrl,
-                                                "notepadLastSavedContent": notepadLastSavedContent,
-                                                "notepadTabs": notepadTabs,
-                                                "notepadCurrentTabIndex": notepadCurrentTabIndex
+                                                "notepadHasContent": notepadHasContent
                                             }, null, 2))
     }
 
@@ -423,6 +385,42 @@ Singleton {
     function setLastBrightnessDevice(device) {
         lastBrightnessDevice = device
         saveSettings()
+    }
+
+    function migrateNotepadData(settings) {
+        const hasLegacyData = settings.notepadTabs || settings.notepadContent || settings.notepadCurrentFileName
+
+        if (hasLegacyData && typeof NotepadStorageService !== "undefined") {
+            const legacyTabs = settings.notepadTabs || []
+            const legacyCurrentTabIndex = settings.notepadCurrentTabIndex || 0
+            const legacyContent = settings.notepadContent || ""
+            const legacyFileName = settings.notepadCurrentFileName || ""
+            const legacyFileUrl = settings.notepadCurrentFileUrl || ""
+            const legacyLastSavedContent = settings.notepadLastSavedContent || ""
+
+            let tabsToMigrate = legacyTabs
+
+            // Handle legacy single notepad format
+            if (legacyTabs.length === 0 && (legacyContent || legacyFileName)) {
+                tabsToMigrate = [{
+                    id: Date.now(),
+                    title: legacyFileName || "Untitled",
+                    content: legacyContent,
+                    fileName: legacyFileName,
+                    fileUrl: legacyFileUrl,
+                    lastSavedContent: legacyLastSavedContent,
+                    hasUnsavedChanges: false
+                }]
+            }
+
+            if (tabsToMigrate.length > 0) {
+                const migrated = NotepadStorageService.migrateFromSession(tabsToMigrate, legacyCurrentTabIndex)
+                if (migrated) {
+                    console.log("SessionData: Successfully migrated notepad data to separate storage")
+                    notepadHasContent = true
+                }
+            }
+        }
     }
 
     FileView {

@@ -26,7 +26,7 @@ PanelWindow {
     property string pendingAction: ""
     property string lastSavedFileContent: ""
     property bool expandedWidth: false
-    property var currentTab: SessionData.notepadTabs.length > SessionData.notepadCurrentTabIndex ? SessionData.notepadTabs[SessionData.notepadCurrentTabIndex] : null
+    property var currentTab: NotepadStorageService.loaded && NotepadStorageService.tabs.length > NotepadStorageService.currentTabIndex ? NotepadStorageService.tabs[NotepadStorageService.currentTabIndex] : null
     property int nextTabId: Date.now()
     
     function hasFileChanges() {
@@ -49,18 +49,9 @@ PanelWindow {
     function updateCurrentTab(properties, saveImmediately = false) {
         if (!currentTab) return
         
-        var tabs = [...SessionData.notepadTabs]
-        var tabIndex = SessionData.notepadCurrentTabIndex
-        
-        if (tabIndex >= 0 && tabIndex < tabs.length) {
-            var updatedTab = Object.assign({}, tabs[tabIndex])
-            Object.assign(updatedTab, properties)
-            tabs[tabIndex] = updatedTab
-            SessionData.notepadTabs = tabs
-            
-            if (saveImmediately) {
-                SessionData.saveSettings()
-            }
+        NotepadStorageService.updateTab(NotepadStorageService.currentTabIndex, properties)
+        if (saveImmediately) {
+            NotepadStorageService.performSave()
         }
     }
     
@@ -75,19 +66,16 @@ PanelWindow {
             hasUnsavedChanges: false
         }
         
-        var tabs = [...SessionData.notepadTabs]
-        tabs.push(newTab)
-        SessionData.notepadTabs = tabs
-        SessionData.notepadCurrentTabIndex = tabs.length - 1
+        var newIndex = NotepadStorageService.addTab(newTab)
+        NotepadStorageService.setCurrentTabIndex(newIndex)
         
         textArea.text = ""
         textArea.forceActiveFocus()
         
-        deferredSaveTimer.restart()
     }
     
     function closeTab(tabIndex) {
-        var tabToClose = SessionData.notepadTabs[tabIndex]
+        var tabToClose = NotepadStorageService.tabs[tabIndex]
         var hasChanges = tabToClose && tabToClose.content !== tabToClose.lastSavedContent
         
         if (hasChanges) {
@@ -100,29 +88,7 @@ PanelWindow {
     }
     
     function performCloseTab(tabIndex) {
-        var tabs = [...SessionData.notepadTabs]
-        
-        if (tabs.length <= 1) {
-            tabs[0] = {
-                id: ++nextTabId,
-                title: "Untitled",
-                content: "",
-                fileName: "",
-                fileUrl: "",
-                lastSavedContent: "",
-                hasUnsavedChanges: false
-            }
-            SessionData.notepadCurrentTabIndex = 0
-        } else {
-            tabs.splice(tabIndex, 1)
-            if (SessionData.notepadCurrentTabIndex >= tabs.length) {
-                SessionData.notepadCurrentTabIndex = tabs.length - 1
-            } else if (SessionData.notepadCurrentTabIndex > tabIndex) {
-                SessionData.notepadCurrentTabIndex -= 1
-            }
-        }
-        
-        SessionData.notepadTabs = tabs
+        NotepadStorageService.removeTab(tabIndex)
         
         Qt.callLater(() => {
             if (currentTab) {
@@ -130,13 +96,12 @@ PanelWindow {
             }
         })
         
-        deferredSaveTimer.restart()
     }
     
     function switchToTab(tabIndex) {
-        if (tabIndex < 0 || tabIndex >= SessionData.notepadTabs.length) return
-        
-        SessionData.notepadCurrentTabIndex = tabIndex
+        if (tabIndex < 0 || tabIndex >= NotepadStorageService.tabs.length) return
+
+        NotepadStorageService.setCurrentTabIndex(tabIndex)
         
         Qt.callLater(() => {
             if (currentTab) {
@@ -147,7 +112,6 @@ PanelWindow {
             }
         })
         
-        deferredSaveTimer.restart()
     }
 
     function show() {
@@ -303,18 +267,18 @@ PanelWindow {
                             spacing: Theme.spacingXS
                             
                             Repeater {
-                                model: SessionData.notepadTabs
+                                model: NotepadStorageService.tabs
                                 
                                 delegate: Rectangle {
                                     required property int index
                                     required property var modelData
                                     
-                                    readonly property bool isActive: SessionData.notepadCurrentTabIndex === index
+                                    readonly property bool isActive: NotepadStorageService.currentTabIndex === index
                                     readonly property bool tabHasChanges: modelData.content !== modelData.lastSavedContent
                                     readonly property bool isHovered: tabMouseArea.containsMouse && !closeMouseArea.containsMouse
                                     readonly property real calculatedWidth: {
                                         const textWidth = tabText.paintedWidth || 100
-                                        const closeButtonWidth = SessionData.notepadTabs.length > 1 ? 20 : 0
+                                        const closeButtonWidth = NotepadStorageService.tabs.length > 1 ? 20 : 0
                                         const spacing = Theme.spacingXS
                                         const padding = Theme.spacingM * 2
                                         return Math.max(120, Math.min(200, textWidth + closeButtonWidth + spacing + padding))
@@ -359,7 +323,7 @@ PanelWindow {
                                             height: 20
                                             radius: 10
                                             color: closeMouseArea.containsMouse ? Theme.surfaceTextHover : "transparent"
-                                            visible: SessionData.notepadTabs.length > 1
+                                            visible: NotepadStorageService.tabs.length > 1
                                             anchors.verticalCenter: parent.verticalCenter
                                             
                                             DankIcon {
@@ -630,19 +594,12 @@ PanelWindow {
             if (currentTab) {
                 updateCurrentTab({
                     hasUnsavedChanges: false
-                }, true)
+                })
+                NotepadStorageService.performSave()
             }
         }
     }
     
-    Timer {
-        id: deferredSaveTimer
-        interval: 500
-        repeat: false
-        onTriggered: {
-            SessionData.saveSettings()
-        }
-    }
 
     property string pendingSaveContent: ""
     
@@ -675,7 +632,8 @@ PanelWindow {
                         content: content,
                         hasUnsavedChanges: false,
                         lastSavedContent: content
-                    }, true)
+                    })
+                    NotepadStorageService.performSave()
                     textArea.text = content
                     root.lastSavedFileContent = content
                 }
@@ -697,7 +655,8 @@ PanelWindow {
                 updateCurrentTab({
                     hasUnsavedChanges: false,
                     lastSavedContent: pendingSaveContent
-                }, true)
+                })
+                NotepadStorageService.performSave()
                 root.lastSavedFileContent = pendingSaveContent
                 pendingSaveContent = ""
             }
