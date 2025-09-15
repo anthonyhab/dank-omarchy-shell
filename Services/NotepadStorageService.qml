@@ -45,7 +45,6 @@ Singleton {
         }
 
         onLoadFailed: {
-            console.log("No existing notepad metadata found, creating default tab")
             createDefaultTab()
         }
     }
@@ -61,12 +60,10 @@ Singleton {
         var filePath = "notepad-files/untitled-" + id + ".txt"
         var fullPath = baseDir + "/" + filePath
 
-        // Mark this tab as being created first
         var newTabsBeingCreated = Object.assign({}, tabsBeingCreated)
         newTabsBeingCreated[id] = true
         tabsBeingCreated = newTabsBeingCreated
 
-        // Create file first, then add tab
         createEmptyFile(fullPath, function() {
             root.tabs = [{
                 id: id,
@@ -79,7 +76,6 @@ Singleton {
             }]
             root.currentTabIndex = 0
 
-            // Mark creation complete
             var updatedTabsBeingCreated = Object.assign({}, tabsBeingCreated)
             delete updatedTabsBeingCreated[id]
             tabsBeingCreated = updatedTabsBeingCreated
@@ -107,16 +103,12 @@ Singleton {
                         ? baseDir + "/" + tab.filePath
                         : tab.filePath
 
-        // Check if this tab is currently being created
         if (tabsBeingCreated[tab.id]) {
-            // Wait a bit and try again
             Qt.callLater(() => {
                 loadTabContent(tabIndex, callback)
             })
             return
         }
-
-        // Load the file - it should already exist from tab creation
         var loader = tabFileLoaderComponent.createObject(root, {
             path: fullPath,
             callback: callback
@@ -153,19 +145,15 @@ Singleton {
             scrollPosition: 0
         }
 
-        // Mark this tab as being created first
         var newTabsBeingCreated = Object.assign({}, tabsBeingCreated)
         newTabsBeingCreated[id] = true
         tabsBeingCreated = newTabsBeingCreated
-
-        // Create file first, then add tab to array
         createEmptyFile(fullPath, function() {
             var newTabs = tabs.slice()
             newTabs.push(newTab)
             tabs = newTabs
             currentTabIndex = tabs.length - 1
 
-            // Mark creation complete
             var updatedTabsBeingCreated = Object.assign({}, tabsBeingCreated)
             delete updatedTabsBeingCreated[id]
             tabsBeingCreated = updatedTabsBeingCreated
@@ -184,12 +172,9 @@ Singleton {
             var id = Date.now()
             var filePath = "notepad-files/untitled-" + id + ".txt"
 
-            // Mark this tab as being created
             var newTabsBeingCreated = Object.assign({}, tabsBeingCreated)
             newTabsBeingCreated[id] = true
             tabsBeingCreated = newTabsBeingCreated
-
-            // Create file first, then update tab
             createEmptyFile(baseDir + "/" + filePath, function() {
                 newTabs[0] = {
                     id: id,
@@ -275,7 +260,6 @@ Singleton {
         var validTabs = []
         for (var i = 0; i < tabs.length; i++) {
             var tab = tabs[i]
-            // Keep all tabs - files will be created on demand when needed
             validTabs.push(tab)
         }
         tabs = validTabs
@@ -289,7 +273,7 @@ Singleton {
         id: tabFileLoaderComponent
         FileView {
             property var callback
-            blockLoading: false
+            blockLoading: true
             preload: true
 
             onLoaded: {
@@ -298,7 +282,6 @@ Singleton {
             }
 
             onLoadFailed: {
-                console.warn("NotepadStorageService: Failed to load file:", path, "- returning empty content")
                 callback("")
                 destroy()
             }
@@ -373,7 +356,6 @@ Singleton {
             property var creationCallback
 
             Component.onCompleted: {
-                // Create and verify file accessibility
                 var touchProcess = touchProcessComponent.createObject(this, {
                     filePath: filePath,
                     callback: creationCallback
@@ -392,13 +374,7 @@ Singleton {
             Component.onCompleted: running = true
 
             onExited: (exitCode) => {
-                if (exitCode === 0) {
-                    // Touch succeeded, file is created
-                    if (callback) callback()
-                } else {
-                    console.error("Failed to create file:", filePath)
-                    if (callback) callback()
-                }
+                if (callback) callback()
                 destroy()
             }
         }
@@ -447,7 +423,6 @@ Singleton {
                         var relativePath = "notepad-files/" + filePath.split('/').pop()
                         
                         if (referencedFiles.indexOf(relativePath) === -1) {
-                            console.log("Cleaning up orphaned temporary file:", filePath)
                             deleteFile(filePath)
                         }
                     }

@@ -40,13 +40,23 @@ PanelWindow {
         if (currentTab.isTemporary) {
             return textArea.text.length > 0
         }
-        
+
         // For non-temporary files, show unsaved if content differs from last saved state
         return textArea.text !== lastSavedContent
     }
     
     function hasUnsavedTemporaryContent() {
         return hasUnsavedChanges()
+    }
+    
+    function hasUnsavedChangesForTab(tab) {
+        if (!tab) return false
+        
+        // Only the currently active tab can show real unsaved status
+        if (tab.id === currentTab?.id) {
+            return hasUnsavedChanges()
+        }
+        return false
     }
     
     function loadCurrentTabContent() {
@@ -78,8 +88,6 @@ PanelWindow {
     function autoSaveToSession() {
         if (!currentTab || !contentLoaded) return
 
-        // Save to storage service to persist across restarts
-        // This preserves content across UI refreshes and restarts but doesn't write to disk until explicit save
         currentContent = textArea.text
         saveCurrentTabContent()
     }
@@ -326,8 +334,8 @@ PanelWindow {
                                             id: tabText
                                             text: {
                                                 var prefix = ""
-                                                if (hasUnsavedChanges()) {
-                                                    prefix = "● "  // Dot for unsaved changes
+                                                if (hasUnsavedChangesForTab(modelData)) {
+                                                    prefix = "● "  
                                                 }
                                                 return prefix + (modelData.title || "Untitled")
                                             }
@@ -418,6 +426,7 @@ PanelWindow {
                         focus: root.isVisible
                         activeFocusOnTab: true
                         textFormat: TextEdit.PlainText
+                        inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                         persistentSelection: true
                         tabStopDistance: 40
                         leftPadding: Theme.spacingM
@@ -440,6 +449,15 @@ PanelWindow {
                                 if (currentTab) {
                                     root.currentFileName = currentTab.fileName || ""
                                     root.currentFileUrl = currentTab.fileUrl || ""
+                                }
+                            }
+                            function onTabsChanged() {
+                                if (NotepadStorageService.tabs.length > 0 && !contentLoaded) {
+                                    loadCurrentTabContent()
+                                    if (currentTab) {
+                                        root.currentFileName = currentTab.fileName || ""
+                                        root.currentFileUrl = currentTab.fileUrl || ""
+                                    }
                                 }
                             }
                         }
@@ -602,7 +620,7 @@ PanelWindow {
                             
                             if (hasUnsavedChanges()) {
                                 if (currentTab && currentTab.isTemporary) {
-                                    return qsTr("Unsaved note (not saved to file)")
+                                    return qsTr("Unsaved note...")
                                 } else {
                                     return qsTr("Unsaved changes")
                                 }
@@ -670,6 +688,7 @@ PanelWindow {
     
     function performLoadFromFile(fileUrl) {
         const filePath = fileUrl.toString().replace(/^file:\/\//, '')
+        const fileName = filePath.split('/').pop()
 
         loadFileView.path = ""
         loadFileView.path = filePath
@@ -685,12 +704,17 @@ PanelWindow {
                     contentLoaded = true
                     root.lastSavedFileContent = content
                     
-                    // Save loaded content to the storage service
+                    NotepadStorageService.updateTabMetadata(NotepadStorageService.currentTabIndex, {
+                        title: fileName,
+                        filePath: filePath,
+                        isTemporary: false
+                    })
+                    
+                    root.currentFileName = fileName
+                    root.currentFileUrl = fileUrl
                     saveCurrentTabContent()
                 }
             })
-        } else {
-            console.warn("Notepad: Failed to load file - waitForJob returned false")
         }
     }
 
@@ -713,7 +737,6 @@ PanelWindow {
         }
 
         onSaveFailed: (error) => {
-            console.warn("Notepad: Failed to save file:", error, "Path:", saveFileView.path)
             pendingSaveContent = ""
         }
     }
@@ -726,7 +749,6 @@ PanelWindow {
         printErrors: true      
 
         onLoadFailed: (error) => {
-            console.warn("Notepad: Failed to load file:", error)
         }
     }
 
