@@ -380,7 +380,6 @@ Singleton {
         }
     }
 
-
     Process {
         id: copyProcess
         property string source
@@ -393,50 +392,4 @@ Singleton {
         property string filePath
         command: ["rm", "-f", filePath]
     }
-
-    function cleanupOrphanedFiles() {
-        var referencedFiles = new Set()
-        
-        for (var i = 0; i < tabs.length; i++) {
-            var tab = tabs[i]
-            if (tab.isTemporary) {
-                referencedFiles.add(tab.filePath)
-            }
-        }
-        
-        cleanupProcess.referencedFiles = Array.from(referencedFiles)
-        cleanupProcess.running = true
-    }
-
-    Process {
-        id: cleanupProcess
-        property var referencedFiles: []
-        command: ["find", filesDir, "-name", "untitled-*.txt", "-type", "f", "-mtime", "+7"]
-        
-        onExited: (exitCode) => {
-            if (exitCode === 0) {
-                var outputText = cleanupProcess.text()
-                if (outputText && outputText.trim()) {
-                    var filesToDelete = outputText.trim().split('\n')
-                    for (var i = 0; i < filesToDelete.length; i++) {
-                        var filePath = filesToDelete[i]
-                        var relativePath = "notepad-files/" + filePath.split('/').pop()
-                        
-                        if (referencedFiles.indexOf(relativePath) === -1) {
-                            deleteFile(filePath)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Timer {
-        id: cleanupTimer
-        interval: 24 * 60 * 60 * 1000
-        repeat: true
-        running: false
-        onTriggered: cleanupOrphanedFiles()
-    }
-
 }
