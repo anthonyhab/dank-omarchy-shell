@@ -18,12 +18,12 @@ PanelWindow {
     property bool isVisible: false
     property bool fileDialogOpen: false
     property string currentFileName: ""
-    property bool hasUnsavedChanges: false
     property url currentFileUrl
     property var targetScreen: null
     property var modelData: null
     property bool confirmationDialogOpen: false
     property string pendingAction: ""
+    property url pendingFileUrl
     property string lastSavedFileContent: ""
     property bool expandedWidth: false
     property var currentTab: NotepadStorageService.tabs.length > NotepadStorageService.currentTabIndex ? NotepadStorageService.tabs[NotepadStorageService.currentTabIndex] : null
@@ -31,11 +31,22 @@ PanelWindow {
     property string lastSavedContent: ""
     property bool contentLoaded: false
     
-    function hasFileChanges() {
+    function hasUnsavedChanges() {
         if (!currentTab || !contentLoaded) {
             return false
         }
+        
+        // For temporary files, show unsaved if there's any content that hasn't been hard-saved
+        if (currentTab.isTemporary) {
+            return textArea.text.length > 0
+        }
+        
+        // For non-temporary files, show unsaved if content differs from last saved state
         return textArea.text !== lastSavedContent
+    }
+    
+    function hasUnsavedTemporaryContent() {
+        return hasUnsavedChanges()
     }
     
     function loadCurrentTabContent() {
@@ -67,12 +78,17 @@ PanelWindow {
     function autoSaveToSession() {
         if (!currentTab || !contentLoaded) return
 
-        // Only save to session state, not to disk
-        // This preserves content across UI refreshes but doesn't write to disk until explicit save
+        // Save to storage service to persist across restarts
+        // This preserves content across UI refreshes and restarts but doesn't write to disk until explicit save
         currentContent = textArea.text
+        saveCurrentTabContent()
     }
     
     function createNewTab() {
+        performCreateNewTab()
+    }
+    
+    function performCreateNewTab() {
         NotepadStorageService.createNewTab()
         textArea.text = ""
         currentContent = ""
@@ -82,7 +98,7 @@ PanelWindow {
     }
     
     function closeTab(tabIndex) {
-        if (tabIndex === NotepadStorageService.currentTabIndex && hasFileChanges()) {
+        if (tabIndex === NotepadStorageService.currentTabIndex && hasUnsavedChanges()) {
             root.pendingAction = "close_tab_" + tabIndex
             root.confirmationDialogOpen = true
             confirmationDialog.open()
@@ -275,7 +291,6 @@ PanelWindow {
                                     required property var modelData
                                     
                                     readonly property bool isActive: NotepadStorageService.currentTabIndex === index
-                                    readonly property bool tabHasChanges: isActive ? hasFileChanges() : false
                                     readonly property bool isHovered: tabMouseArea.containsMouse && !closeMouseArea.containsMouse
                                     readonly property real calculatedWidth: {
                                         const textWidth = tabText.paintedWidth || 100
@@ -309,7 +324,13 @@ PanelWindow {
                                         
                                         StyledText {
                                             id: tabText
-                                            text: (tabHasChanges ? "● " : "") + (modelData.title || "Untitled")
+                                            text: {
+                                                var prefix = ""
+                                                if (hasUnsavedChanges()) {
+                                                    prefix = "● "  // Dot for unsaved changes
+                                                }
+                                                return prefix + (modelData.title || "Untitled")
+                                            }
                                             font.pixelSize: Theme.fontSizeSmall
                                             color: isActive ? Theme.primary : Theme.surfaceText
                                             font.weight: isActive ? Font.Medium : Font.Normal
@@ -439,16 +460,19 @@ PanelWindow {
                                 switch (event.key) {
                                 case Qt.Key_S:
                                     event.accepted = true
-                                    if (currentTab && currentTab.fileUrl && !currentTab.isTemporary) {
-                                        saveToFile(currentTab.fileUrl)
+                                    if (currentTab && !currentTab.isTemporary && currentTab.filePath) {
+                                        // For non-temporary tabs, save directly to the original file
+                                        var fileUrl = "file://" + currentTab.filePath
+                                        saveToFile(fileUrl)
                                     } else {
+                                        // For temporary tabs or new files, open save dialog
                                         root.fileDialogOpen = true
                                         saveBrowser.open()
                                     }
                                     break
                                 case Qt.Key_O:
                                     event.accepted = true
-                                    if (hasFileChanges()) {
+                                    if (hasUnsavedChanges()) {
                                         root.pendingAction = "open"
                                         root.confirmationDialogOpen = true
                                         confirmationDialog.open()
@@ -459,7 +483,7 @@ PanelWindow {
                                     break
                                 case Qt.Key_N:
                                     event.accepted = true
-                                    if (hasFileChanges()) {
+                                    if (hasUnsavedChanges()) {
                                         root.pendingAction = "new"
                                         root.confirmationDialogOpen = true
                                         confirmationDialog.open()
@@ -497,7 +521,7 @@ PanelWindow {
                             iconName: "save"
                             iconSize: Theme.iconSize - 2
                             iconColor: Theme.primary
-                            enabled: currentTab && (hasFileChanges() || textArea.text.length > 0)
+                            enabled: currentTab && (hasUnsavedChanges() || textArea.text.length > 0)
                             onClicked: {
                                 root.fileDialogOpen = true
                                 saveBrowser.open()
@@ -518,7 +542,7 @@ PanelWindow {
                             iconSize: Theme.iconSize - 2
                             iconColor: Theme.secondary
                             onClicked: {
-                                if (hasFileChanges()) {
+                                if (hasUnsavedChanges()) {
                                     root.pendingAction = "open"
                                     root.confirmationDialogOpen = true
                                     confirmationDialog.open()
@@ -571,9 +595,33 @@ PanelWindow {
                     }
 
                     StyledText {
-                        text: autoSaveTimer.running ? qsTr("Auto-saving...") : (hasFileChanges() ? qsTr("Unsaved changes") : qsTr("Auto-saved"))
+                        text: {
+                            if (autoSaveTimer.running) {
+                                return qsTr("Auto-saving...")
+                            }
+                            
+                            if (hasUnsavedChanges()) {
+                                if (currentTab && currentTab.isTemporary) {
+                                    return qsTr("Unsaved note (not saved to file)")
+                                } else {
+                                    return qsTr("Unsaved changes")
+                                }
+                            } else {
+                                return qsTr("Saved")
+                            }
+                        }
                         font.pixelSize: Theme.fontSizeSmall
-                        color: hasFileChanges() ? Theme.warning : (autoSaveTimer.running ? Theme.primary : Theme.surfaceTextMedium)
+                        color: {
+                            if (autoSaveTimer.running) {
+                                return Theme.primary
+                            }
+                            
+                            if (hasUnsavedChanges()) {
+                                return Theme.warning
+                            } else {
+                                return Theme.success
+                            }
+                        }
                         opacity: textArea.text.length > 0 ? 1 : 0
                     }
                 }
@@ -607,7 +655,20 @@ PanelWindow {
         Qt.callLater(() => {
             saveFileView.setText(pendingSaveContent)
         })
-    }    function loadFromFile(fileUrl) {
+    }
+    
+    function loadFromFile(fileUrl) {
+        if (hasUnsavedTemporaryContent()) {
+            root.pendingFileUrl = fileUrl
+            root.pendingAction = "load_file"
+            root.confirmationDialogOpen = true
+            confirmationDialog.open()
+        } else {
+            performLoadFromFile(fileUrl)
+        }
+    }
+    
+    function performLoadFromFile(fileUrl) {
         const filePath = fileUrl.toString().replace(/^file:\/\//, '')
 
         loadFileView.path = ""
@@ -620,8 +681,12 @@ PanelWindow {
                 if (currentTab && content !== undefined && content !== null) {
                     textArea.text = content
                     currentContent = content
+                    lastSavedContent = content
                     contentLoaded = true
                     root.lastSavedFileContent = content
+                    
+                    // Save loaded content to the storage service
+                    saveCurrentTabContent()
                 }
             })
         } else {
@@ -674,7 +739,16 @@ PanelWindow {
         fileExtensions: ["*.txt", "*.md", "*.*"]
         allowStacking: true
         saveMode: true
-        defaultFileName: (currentTab && currentTab.fileName) || "note.txt"
+        defaultFileName: {
+            if (currentTab && currentTab.title && currentTab.title !== "Untitled") {
+                return currentTab.title
+            } else if (currentTab && !currentTab.isTemporary && currentTab.filePath) {
+                // Extract filename from path for non-temporary files
+                return currentTab.filePath.split('/').pop()
+            } else {
+                return "note.txt"
+            }
+        }
         
         WlrLayershell.layer: WlrLayershell.Overlay
         
@@ -741,13 +815,6 @@ PanelWindow {
             root.currentFileName = fileName
             root.currentFileUrl = fileUrl
             
-            if (currentTab) {
-                NotepadStorageService.saveTabAs(
-                    NotepadStorageService.currentTabIndex,
-                    cleanPath
-                )
-            }
-
             loadFromFile(fileUrl)
             close()
         }
@@ -805,7 +872,9 @@ PanelWindow {
                                       qsTr("You have unsaved changes. Save before creating a new file?") :
                                       root.pendingAction.startsWith("close_tab_") ?
                                       qsTr("You have unsaved changes. Save before closing this tab?") :
-                                      qsTr("You have unsaved changes. Save before opening a file?")
+                                      root.pendingAction === "load_file" || root.pendingAction === "open" ?
+                                      qsTr("You have unsaved changes. Save before opening a file?") :
+                                      qsTr("You have unsaved changes. Save before continuing?")
                                 font.pixelSize: Theme.fontSizeMedium
                                 color: Theme.surfaceTextMedium
                                 width: parent.width
@@ -863,11 +932,14 @@ PanelWindow {
                                         } else if (root.pendingAction === "open") {
                                             root.fileDialogOpen = true
                                             loadBrowser.open()
+                                        } else if (root.pendingAction === "load_file") {
+                                            performLoadFromFile(root.pendingFileUrl)
                                         } else if (root.pendingAction.startsWith("close_tab_")) {
                                             var tabIndex = parseInt(root.pendingAction.split("_")[2])
                                             performCloseTab(tabIndex)
                                         }
                                         root.pendingAction = ""
+                                        root.pendingFileUrl = ""
                                     }
                                 }
                             }

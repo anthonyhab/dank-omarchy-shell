@@ -37,7 +37,6 @@ Singleton {
                 var data = JSON.parse(text())
                 root.tabs = data.tabs || []
                 root.currentTabIndex = data.currentTabIndex || 0
-                migrateLegacyTabs()
                 validateTabs()
             } catch(e) {
                 console.warn("Failed to parse notepad metadata:", e)
@@ -46,56 +45,11 @@ Singleton {
         }
 
         onLoadFailed: {
-            // Try to migrate from legacy session.json if notepad-session.json doesn't exist
-            migrateLegacySessionData()
+            console.log("No existing notepad metadata found, creating default tab")
+            createDefaultTab()
         }
     }
 
-    function migrateLegacyTabs() {
-        // Check if we need to migrate old tab format
-        var needsSave = false
-        for (var i = 0; i < tabs.length; i++) {
-            var tab = tabs[i]
-            // Check for old format with fileUrl property or other legacy properties
-            if (tab.fileUrl || tab.fileName) {
-                var newTabs = tabs.slice()
-                var filePath = tab.filePath
-                var isTemporary = true
-
-                // Handle fileUrl format - this indicates a saved file
-                if (tab.fileUrl) {
-                    var url = tab.fileUrl.toString()
-                    if (url.startsWith("file://")) {
-                        url = url.substring(7) // Remove file:// prefix
-                    }
-                    filePath = url  // Use the actual saved file path
-                    isTemporary = false  // Saved files are not temporary
-                }
-
-                // Create clean tab object with only the new format properties
-                newTabs[i] = {
-                    id: tab.id || Date.now(),
-                    title: tab.fileName || tab.title || "Untitled",
-                    filePath: filePath,
-                    isTemporary: isTemporary,
-                    lastModified: tab.lastModified || new Date().toISOString(),
-                    cursorPosition: tab.cursorPosition || 0,
-                    scrollPosition: tab.scrollPosition || 0
-                }
-                tabs = newTabs
-                needsSave = true
-            }
-        }
-        if (needsSave) {
-            console.log("Migrated legacy tab format")
-            saveMetadata()
-        }
-    }
-
-    function migrateLegacySessionData() {
-        // Try to load from old session.json
-        var legacyLoader = legacySessionLoaderComponent.createObject(root)
-    }
 
     function loadMetadata() {
         metadataFile.path = ""
@@ -257,7 +211,7 @@ Singleton {
             return
         } else {
             var tabToDelete = newTabs[tabIndex]
-            if (tabToDelete.isTemporary) {
+            if (tabToDelete && tabToDelete.isTemporary) {
                 deleteFile(baseDir + "/" + tabToDelete.filePath)
             }
 
@@ -464,71 +418,50 @@ Singleton {
         command: ["rm", "-f", filePath]
     }
 
-    Component {
-        id: legacySessionLoaderComponent
-        FileView {
-            path: baseDir + "/session.json"
-            blockLoading: false
-
-            onLoaded: {
-                try {
-                    var legacyData = JSON.parse(text())
-                    if (legacyData.notepadTabs && legacyData.notepadTabs.length > 0) {
-                        console.log("Migrating legacy notepad tabs from session.json")
-                        var migratedTabs = []
-
-                        for (var i = 0; i < legacyData.notepadTabs.length; i++) {
-                            var oldTab = legacyData.notepadTabs[i]
-                            var newTab = {
-                                id: oldTab.id || Date.now() + i,
-                                title: oldTab.fileName || oldTab.title || "Untitled",
-                                filePath: oldTab.fileUrl ? oldTab.fileUrl.toString().replace("file://", "") : ("notepad-files/migrated-" + oldTab.id + ".txt"),
-                                isTemporary: !oldTab.fileUrl,
-                                lastModified: new Date().toISOString(),
-                                cursorPosition: 0,
-                                scrollPosition: 0
-                            }
-
-                            // If it was a saved file, it should point to the external location
-                            if (oldTab.fileUrl) {
-                                newTab.isTemporary = false
-                            } else if (oldTab.content) {
-                                // Create a migrated file for content that wasn't saved externally
-                                newTab.isTemporary = true
-                                var migratedPath = baseDir + "/" + newTab.filePath
-                                createFileWithContent(migratedPath, oldTab.content || "")
-                            }
-
-                            migratedTabs.push(newTab)
-                        }
-
-                        root.tabs = migratedTabs
-                        root.currentTabIndex = Math.min(legacyData.notepadCurrentTabIndex || 0, migratedTabs.length - 1)
-                        saveMetadata()
-                    } else {
-                        createDefaultTab()
-                    }
-                } catch(e) {
-                    console.warn("Failed to migrate legacy session data:", e)
-                    createDefaultTab()
-                }
-                destroy()
+    function cleanupOrphanedFiles() {
+        var referencedFiles = new Set()
+        
+        for (var i = 0; i < tabs.length; i++) {
+            var tab = tabs[i]
+            if (tab.isTemporary) {
+                referencedFiles.add(tab.filePath)
             }
+        }
+        
+        cleanupProcess.referencedFiles = Array.from(referencedFiles)
+        cleanupProcess.running = true
+    }
 
-            onLoadFailed: {
-                console.log("No legacy session.json found, creating default tab")
-                createDefaultTab()
-                destroy()
+    Process {
+        id: cleanupProcess
+        property var referencedFiles: []
+        command: ["find", filesDir, "-name", "untitled-*.txt", "-type", "f", "-mtime", "+7"]
+        
+        onExited: (exitCode) => {
+            if (exitCode === 0) {
+                var outputText = cleanupProcess.text()
+                if (outputText && outputText.trim()) {
+                    var filesToDelete = outputText.trim().split('\n')
+                    for (var i = 0; i < filesToDelete.length; i++) {
+                        var filePath = filesToDelete[i]
+                        var relativePath = "notepad-files/" + filePath.split('/').pop()
+                        
+                        if (referencedFiles.indexOf(relativePath) === -1) {
+                            console.log("Cleaning up orphaned temporary file:", filePath)
+                            deleteFile(filePath)
+                        }
+                    }
+                }
             }
         }
     }
 
-    function createFileWithContent(path, content) {
-        var creator = tabFileSaverComponent.createObject(root, {
-            path: path,
-            content: content,
-            tabIndex: -1
-        })
+    Timer {
+        id: cleanupTimer
+        interval: 24 * 60 * 60 * 1000
+        repeat: true
+        running: false
+        onTriggered: cleanupOrphanedFiles()
     }
 
 }
