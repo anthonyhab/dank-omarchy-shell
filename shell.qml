@@ -236,6 +236,11 @@ ShellRoot {
 
     SettingsModal {
         id: settingsModal
+        
+        Component.onCompleted: {
+            // Set reference for SpellcheckService
+            SpellcheckService.settingsModalRef = settingsModal
+        }
     }
 
     LazyLoader {

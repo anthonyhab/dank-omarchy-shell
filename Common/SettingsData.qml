@@ -86,9 +86,19 @@ Singleton {
     property bool notepadUseMonospace: true
     property string notepadFontFamily: ""
     property real notepadFontSize: 14
+    property bool spellcheckEnabled: true
+    property string spellcheckLanguage: "en_US"
+    property bool spellcheckAutoDetectLanguage: true
+    property color spellcheckHighlightColor: "#ff6b6b"
+    property string spellcheckCustomDictionary: "[]"
+    property string spellcheckIgnoredWords: "[]"
     onNotepadUseMonospaceChanged: saveSettings()
     onNotepadFontFamilyChanged: saveSettings()
     onNotepadFontSizeChanged: saveSettings()
+    onSpellcheckEnabledChanged: saveSettings()
+    onSpellcheckLanguageChanged: saveSettings()
+    onSpellcheckAutoDetectLanguageChanged: saveSettings()
+    onSpellcheckHighlightColorChanged: saveSettings()
     property bool gtkThemingEnabled: false
     property bool qtThemingEnabled: false
     property bool showDock: false
@@ -102,6 +112,10 @@ Singleton {
     property real topBarBottomGap: 0
     property real topBarInnerPadding: 8
     property bool topBarSquareCorners: false
+    onCornerRadiusChanged: saveSettings()
+    onTopBarSpacingChanged: saveSettings()
+    onTopBarBottomGapChanged: saveSettings()
+    onTopBarInnerPaddingChanged: saveSettings()
     property bool topBarNoBackground: false
     property bool lockScreenShowPowerActions: true
     property bool hideBrightnessSlider: false

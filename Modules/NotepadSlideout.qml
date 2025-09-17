@@ -119,6 +119,12 @@ PanelWindow {
                 currentContent = content
                 lastSavedContent = content
                 textArea.text = content
+                // Ensure cursor position is valid after text change
+                Qt.callLater(() => {
+                    if (textArea.cursorPosition > textArea.text.length) {
+                        textArea.cursorPosition = textArea.text.length
+                    }
+                })
                 contentLoaded = true
             }
         )
@@ -496,6 +502,14 @@ PanelWindow {
                                 root.currentFileName = currentTab.fileName || ""
                                 root.currentFileUrl = currentTab.fileUrl || ""
                             }
+                            // Initialize spellcheck if enabled
+                            if (SettingsData.spellcheckEnabled) {
+                                SpellcheckService.createHighlighter(textArea)
+                            }
+                        }
+                        
+                        Component.onDestruction: {
+                            SpellcheckService.destroyHighlighter()
                         }
                         
                         Connections {
@@ -515,6 +529,26 @@ PanelWindow {
                                         root.currentFileUrl = currentTab.fileUrl || ""
                                     }
                                 }
+                            }
+                        }
+                        
+                        Connections {
+                            target: SettingsData
+                            function onSpellcheckEnabledChanged() {
+                                if (SettingsData.spellcheckEnabled) {
+                                    SpellcheckService.createHighlighter(textArea)
+                                } else {
+                                    SpellcheckService.destroyHighlighter()
+                                }
+                            }
+                            function onSpellcheckLanguageChanged() {
+                                SpellcheckService.setLanguage(SettingsData.spellcheckLanguage)
+                            }
+                            function onSpellcheckAutoDetectLanguageChanged() {
+                                SpellcheckService.setAutoDetectLanguage(SettingsData.spellcheckAutoDetectLanguage)
+                            }
+                            function onSpellcheckHighlightColorChanged() {
+                                SpellcheckService.setHighlightColor(SettingsData.spellcheckHighlightColor)
                             }
                         }
                         
@@ -575,6 +609,32 @@ PanelWindow {
 
                         background: Rectangle {
                             color: "transparent"
+                        }
+                        
+                        MouseArea {
+                            id: textAreaMouseArea
+                            anchors.fill: parent
+                            acceptedButtons: Qt.RightButton
+                            propagateComposedEvents: true
+                            cursorShape: Qt.IBeamCursor  // Ensure proper text cursor
+                            hoverEnabled: false  // Don't interfere with text area hover
+                            onClicked: (mouse) => {
+                                if (mouse.button === Qt.RightButton && SettingsData.spellcheckEnabled) {
+                                    // Get the cursor position at the mouse click with bounds checking
+                                    var position = textArea.positionAt(mouse.x, mouse.y)
+                                    var textLength = textArea.text.length
+                                    var safePosition = Math.max(0, Math.min(position, textLength))
+                                    textArea.cursorPosition = safePosition
+                                    
+                                    // Show spellcheck context menu with proper parent
+                                    var menu = SpellcheckService.createContextMenu(textArea, safePosition, textAreaMouseArea)
+                                    if (menu) {
+                                        menu.popup(textAreaMouseArea, mouse.x, mouse.y)
+                                    } else {
+                                        console.log("SpellcheckService: No context menu created (word not misspelled)")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -971,6 +1031,13 @@ PanelWindow {
                     lastSavedContent = content
                     contentLoaded = true
                     root.lastSavedFileContent = content
+                    
+                    // Ensure cursor position is valid after text change
+                    Qt.callLater(() => {
+                        if (textArea.cursorPosition > textArea.text.length) {
+                            textArea.cursorPosition = textArea.text.length
+                        }
+                    })
                     
                     NotepadStorageService.updateTabMetadata(NotepadStorageService.currentTabIndex, {
                         title: fileName,
