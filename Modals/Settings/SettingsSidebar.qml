@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import qs.Common
 import qs.Modals.Settings
 import qs.Widgets
@@ -21,6 +22,9 @@ Rectangle {
         "text": "Top Bar",
         "icon": "toolbar"
     }, {
+        "text": "System Tray",
+        "icon": "notifications"
+    }, {
         "text": "Widgets",
         "icon": "widgets"
     }, {
@@ -41,6 +45,9 @@ Rectangle {
     }, {
         "text": "About",
         "icon": "info"
+    }, {
+        "text": "HomeAssistant",
+        "icon": "home"
     }]
 
     width: 270
@@ -48,31 +55,35 @@ Rectangle {
     color: Theme.surfaceContainer
     radius: Theme.cornerRadius
 
-    Column {
+    ScrollView {
         anchors.fill: parent
         anchors.leftMargin: Theme.spacingS
         anchors.rightMargin: Theme.spacingS
         anchors.bottomMargin: Theme.spacingS
         anchors.topMargin: Theme.spacingM + 2
-        spacing: Theme.spacingXS
+        contentWidth: availableWidth
 
-        ProfileSection {
-            parentModal: sidebarContainer.parentModal
-        }
-
-        Rectangle {
-            width: parent.width - Theme.spacingS * 2
-            height: 1
-            color: Theme.outline
-            opacity: 0.2
-        }
-
-        Item {
+        Column {
             width: parent.width
-            height: Theme.spacingL
-        }
+            spacing: Theme.spacingXS
 
-        Repeater {
+            ProfileSection {
+                parentModal: sidebarContainer.parentModal
+            }
+
+            Rectangle {
+                width: parent.width - Theme.spacingS * 2
+                height: 1
+                color: Theme.outline
+                opacity: 0.2
+            }
+
+            Item {
+                width: parent.width
+                height: Theme.spacingL
+            }
+
+            Repeater {
             id: sidebarRepeater
 
             model: sidebarContainer.sidebarItems
@@ -128,6 +139,8 @@ Rectangle {
                 }
 
             }
+
+        }
 
         }
 

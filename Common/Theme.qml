@@ -26,7 +26,7 @@ Singleton {
     readonly property string shellDir: Paths.strip(Qt.resolvedUrl(".").toString()).replace("/Common/", "")
     readonly property string wallpaperPath: {
         if (typeof SessionData === "undefined") return ""
-        
+
         if (SessionData.perMonitorWallpaper) {
             // Use first monitor's wallpaper for dynamic theming
             var screens = Quickshell.screens
@@ -52,7 +52,7 @@ Singleton {
     }
     readonly property string rawWallpaperPath: {
         if (typeof SessionData === "undefined") return ""
-        
+
         if (SessionData.perMonitorWallpaper) {
             // Use first monitor's wallpaper for dynamic theming
             var screens = Quickshell.screens
@@ -70,6 +70,7 @@ Singleton {
     property bool qtThemingEnabled: typeof SettingsData !== "undefined" ? (SettingsData.qt5ctAvailable || SettingsData.qt6ctAvailable) : false
     property var workerRunning: false
     property var matugenColors: ({})
+    property var omarchyColors: ({})
     property bool extractionRequested: false
     property int colorUpdateTrigger: 0
     property var customThemeData: null
@@ -81,10 +82,12 @@ Singleton {
         matugenCheck.running = true
         if (typeof SessionData !== "undefined")
             SessionData.isLightModeChanged.connect(root.onLightModeChanged)
-        
+
         if (typeof SettingsData !== "undefined" && SettingsData.currentThemeName) {
             switchTheme(SettingsData.currentThemeName, false)
         }
+
+        loadOmarchyColors()
     }
 
     function getMatugenColor(path, fallback) {
@@ -99,29 +102,80 @@ Singleton {
         return cur || fallback
     }
 
+    function getOmarchyColor(section, property, fallback) {
+        colorUpdateTrigger
+        if (!omarchyColors || !omarchyColors[section] || !omarchyColors[section][property]) {
+            return fallback
+        }
+        const colorStr = omarchyColors[section][property]
+        const rgbValues = colorStr.split(',').map(val => parseInt(val.trim()) / 255.0)
+        if (rgbValues.length === 3) {
+            return Qt.rgba(rgbValues[0], rgbValues[1], rgbValues[2], 1.0)
+        }
+        return fallback
+    }
+
+    function loadOmarchyColors() {
+        if (typeof SettingsData === "undefined" || !SettingsData.omarchyTheme) {
+            return
+        }
+
+        const omarchyPath = homeDir + "/.config/omarchy/themes/" + SettingsData.omarchyTheme + "/dank.colors"
+        omarchyFileView.path = omarchyPath
+        omarchyFileView.reload()
+    }
+
+    function parseOmarchyColors(text) {
+        const colors = {}
+        if (!text) return colors
+
+        const lines = text.split('\n')
+        let currentSection = null
+
+        for (const line of lines) {
+            const trimmedLine = line.trim()
+            if (!trimmedLine || trimmedLine.startsWith('#')) continue
+
+            if (trimmedLine.startsWith('[') && trimmedLine.endsWith(']')) {
+                currentSection = trimmedLine.slice(1, -1)
+                if (!colors[currentSection]) {
+                    colors[currentSection] = {}
+                }
+                continue
+            }
+
+            if (currentSection && trimmedLine.includes('=')) {
+                const [key, value] = trimmedLine.split('=', 2)
+                colors[currentSection][key.trim()] = value.trim()
+            }
+        }
+
+        return colors
+    }
+
     readonly property var currentThemeData: {
         if (currentTheme === "custom") {
             return customThemeData || StockThemes.getThemeByName("blue", isLightMode)
         } else if (currentTheme === dynamic) {
             return {
-                "primary": getMatugenColor("primary", "#42a5f5"),
-                "primaryText": getMatugenColor("on_primary", "#ffffff"),
-                "primaryContainer": getMatugenColor("primary_container", "#1976d2"),
-                "secondary": getMatugenColor("secondary", "#8ab4f8"),
-                "surface": getMatugenColor("surface", "#1a1c1e"),
-                "surfaceText": getMatugenColor("on_background", "#e3e8ef"),
-                "surfaceVariant": getMatugenColor("surface_variant", "#44464f"),
-                "surfaceVariantText": getMatugenColor("on_surface_variant", "#c4c7c5"),
-                "surfaceTint": getMatugenColor("surface_tint", "#8ab4f8"),
-                "background": getMatugenColor("background", "#1a1c1e"),
-                "backgroundText": getMatugenColor("on_background", "#e3e8ef"),
-                "outline": getMatugenColor("outline", "#8e918f"),
-                "surfaceContainer": getMatugenColor("surface_container", "#1e2023"),
-                "surfaceContainerHigh": getMatugenColor("surface_container_high", "#292b2f"),
-                "error": "#F2B8B5",
+                "primary": getOmarchyColor("Colors:Button", "DecorationFocus", "#42a5f5"),
+                "primaryText": getOmarchyColor("Colors:Selection", "ForegroundNormal", "#ffffff"),
+                "primaryContainer": getOmarchyColor("Colors:Selection", "BackgroundNormal", "#1976d2"),
+                "secondary": getOmarchyColor("Colors:Button", "DecorationHover", "#8ab4f8"),
+                "surface": getOmarchyColor("Colors:Window", "BackgroundNormal", "#1a1c1e"),
+                "surfaceText": getOmarchyColor("Colors:Window", "ForegroundNormal", "#e3e8ef"),
+                "surfaceVariant": getOmarchyColor("Colors:Window", "BackgroundAlternate", "#44464f"),
+                "surfaceVariantText": getOmarchyColor("Colors:Window", "ForegroundInactive", "#c4c7c5"),
+                "surfaceTint": getOmarchyColor("Colors:Button", "DecorationHover", "#8ab4f8"),
+                "background": getOmarchyColor("Colors:View", "BackgroundNormal", "#1a1c1e"),
+                "backgroundText": getOmarchyColor("Colors:View", "ForegroundNormal", "#e3e8ef"),
+                "outline": getOmarchyColor("Colors:View", "ForegroundInactive", "#8e918f"),
+                "surfaceContainer": getOmarchyColor("Colors:View", "BackgroundAlternate", "#1e2023"),
+                "surfaceContainerHigh": getOmarchyColor("Colors:Header", "BackgroundNormal", "#292b2f"),
+                "error": getOmarchyColor("Colors:View", "ForegroundNegative", "#F2B8B5"),
                 "warning": "#FF9800",
                 "info": "#2196F3",
-                "success": "#4CAF50"
+                "success": getOmarchyColor("Colors:View", "ForegroundPositive", "#4CAF50")
             }
         } else {
             return StockThemes.getThemeByName(currentTheme, isLightMode)
@@ -505,6 +559,12 @@ Singleton {
         if (currentTheme === "custom" && customThemeFileView.path) {
             customThemeFileView.reload()
         }
+
+        if (currentTheme === dynamic) {
+            loadOmarchyColors()
+        }
+
+        generateSystemThemesFromCurrentTheme()
     }
 
     function setDesiredTheme(kind, value, isLight, iconTheme, matugenType) {
@@ -930,6 +990,34 @@ Singleton {
             if (typeof ToastService !== "undefined") {
                 ToastService.showError("Failed to read theme file: " + error)
             }
+        }
+    }
+
+    FileView {
+        id: omarchyFileView
+        watchChanges: currentTheme === dynamic
+
+        function parseAndLoadOmarchyColors() {
+            try {
+                omarchyColors = parseOmarchyColors(omarchyFileView.text())
+                colorUpdateTrigger++
+            } catch (e) {
+                console.warn("Failed to parse Omarchy colors:", e.message)
+                omarchyColors = {}
+            }
+        }
+
+        onLoaded: {
+            parseAndLoadOmarchyColors()
+        }
+
+        onFileChanged: {
+            omarchyFileView.reload()
+        }
+
+        onLoadFailed: function (error) {
+            console.warn("Failed to read Omarchy theme file:", error)
+            omarchyColors = {}
         }
     }
 

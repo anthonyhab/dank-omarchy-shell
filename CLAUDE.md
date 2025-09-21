@@ -489,3 +489,4 @@ Before writing new utility functions, check these existing ones:
 grep -r "function.*get.*Icon" Services/ Common/
 grep -r "function.*" path/to/relevant/directory/
 ```
+- always use `quickshell ipc -p /home/habibe/dank-omarchy-shell call` to talk to the ipc when you are troubleshooting

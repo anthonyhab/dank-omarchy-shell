@@ -51,6 +51,13 @@ Item {
             "icon": "music_note",
             "enabled": true
         }, {
+            "id": "homeAssistant",
+            "text": "HomeAssistant Media",
+            "description": "Control Apple TV and other HomeAssistant media players",
+            "icon": "home",
+            "enabled": HomeAssistantService.configValid,
+            "warning": !HomeAssistantService.configValid ? "Configure HomeAssistant URL and token in settings" : undefined
+        }, {
             "id": "clipboard",
             "text": "Clipboard Manager",
             "description": "Access clipboard history",

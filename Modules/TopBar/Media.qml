@@ -15,9 +15,9 @@ Rectangle {
         case 0:
             return 0; // No text in small mode
         case 2:
-            return 180; // Large text area
+            return 280; // Large text area
         default:
-            return 120; // Medium text area
+            return 200; // Medium text area
         }
     }
     readonly property int currentContentWidth: {

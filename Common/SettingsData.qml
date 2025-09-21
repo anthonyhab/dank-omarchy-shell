@@ -79,6 +79,8 @@ Singleton {
     property real osLogoBrightness: 0.5
     property real osLogoContrast: 1
     property bool wallpaperDynamicTheming: true
+    property string themeSource: "matugen"
+    property string omarchyTheme: "catppuccin"
     property bool weatherEnabled: true
     property string fontFamily: "Inter Variable"
     property string monoFontFamily: "Fira Code"
@@ -270,6 +272,8 @@ Singleton {
                 osLogoBrightness = settings.osLogoBrightness !== undefined ? settings.osLogoBrightness : 0.5
                 osLogoContrast = settings.osLogoContrast !== undefined ? settings.osLogoContrast : 1
                 wallpaperDynamicTheming = settings.wallpaperDynamicTheming !== undefined ? settings.wallpaperDynamicTheming : true
+                themeSource = settings.themeSource !== undefined ? settings.themeSource : "matugen"
+                omarchyTheme = settings.omarchyTheme !== undefined ? settings.omarchyTheme : "catppuccin"
                 fontFamily = settings.fontFamily !== undefined ? settings.fontFamily : defaultFontFamily
                 monoFontFamily = settings.monoFontFamily !== undefined ? settings.monoFontFamily : defaultMonoFontFamily
                 fontWeight = settings.fontWeight !== undefined ? settings.fontWeight : Font.Normal
@@ -380,6 +384,8 @@ Singleton {
                                                 "osLogoBrightness": osLogoBrightness,
                                                 "osLogoContrast": osLogoContrast,
                                                 "wallpaperDynamicTheming": wallpaperDynamicTheming,
+                                                "themeSource": themeSource,
+                                                "omarchyTheme": omarchyTheme,
                                                 "fontFamily": fontFamily,
                                                 "monoFontFamily": monoFontFamily,
                                                 "fontWeight": fontWeight,
@@ -870,6 +876,16 @@ Singleton {
         saveSettings()
     }
 
+    function setThemeSource(source) {
+        themeSource = source
+        saveSettings()
+    }
+
+    function setOmarchyTheme(theme) {
+        omarchyTheme = theme
+        saveSettings()
+    }
+
     function setFontFamily(family) {
         fontFamily = family
         saveSettings()
@@ -1160,6 +1176,24 @@ Singleton {
                 // No default settings file found, just apply stored theme
                 applyStoredTheme()
             }
+        }
+    }
+
+    IpcHandler {
+        target: "omarchy"
+
+        function setTheme(themeName: string): string {
+            root.setOmarchyTheme(themeName)
+            if (typeof Theme !== "undefined") {
+                Theme.switchTheme(Theme.dynamic)
+                Theme.loadOmarchyColors()
+                Theme.extractColors()
+            }
+            return "Omarchy theme set to: " + themeName
+        }
+
+        function getTheme(): string {
+            return "Current theme: " + root.omarchyTheme
         }
     }
 

@@ -658,9 +658,22 @@ DankPopout {
                     }
                 }
 
+                Row {
+                    width: parent.width
+                    spacing: Theme.spacingM
+                    visible: SettingsData.homeAssistantEnabled
+
+                    HomeAssistantPill {
+                        width: parent.width
+                        expanded: root.expandedSection === "homeassistant"
+                        onExpandClicked: root.toggleSection("homeassistant")
+                        onDetailViewRequested: root.toggleSection("homeassistant")
+                    }
+                }
+
                 Loader {
                     width: parent.width
-                    active: root.expandedSection === "audio_output" || root.expandedSection === "audio_input"
+                    active: root.expandedSection === "audio_output" || root.expandedSection === "audio_input" || root.expandedSection === "homeassistant"
                     visible: active
                     sourceComponent: DetailView {
                         width: parent.width
@@ -669,6 +682,7 @@ DankPopout {
                             switch (root.expandedSection) {
                             case "audio_output": return "Audio Output"
                             case "audio_input": return "Audio Input"
+                            case "homeassistant": return "HomeAssistant"
                             default: return ""
                             }
                         }
@@ -676,10 +690,16 @@ DankPopout {
                             switch (root.expandedSection) {
                             case "audio_output": return audioOutputDetailComponent
                             case "audio_input": return audioInputDetailComponent
+                            case "homeassistant": return homeAssistantDetailComponent
                             default: return null
                             }
                         }
-                        contentHeight: 250
+                        contentHeight: {
+                            switch (root.expandedSection) {
+                            case "homeassistant": return -1  // Use implicit height
+                            default: return 250
+                            }
+                        }
                     }
                 }
 
@@ -760,5 +780,10 @@ DankPopout {
     Component {
         id: audioInputDetailComponent
         AudioInputDetail {}
+    }
+
+    Component {
+        id: homeAssistantDetailComponent
+        HomeAssistantDetailView {}
     }
 }

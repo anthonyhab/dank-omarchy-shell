@@ -35,9 +35,9 @@ PanelWindow {
         if (!notepadVariants || !notepadVariants.instances) return null
 
         for (var i = 0; i < notepadVariants.instances.length; i++) {
-            var slideout = notepadVariants.instances[i]
-            if (slideout.modelData && slideout.modelData.name === root.screen?.name) {
-                return slideout
+            var loader = notepadVariants.instances[i]
+            if (loader.modelData && loader.modelData.name === (root.screen ? root.screen.name : "")) {
+                return loader.item
             }
         }
         return null
@@ -124,7 +124,7 @@ PanelWindow {
     Connections {
         target: root.screen
         function onGeometryChanged() {
-            if (centerSection?.width > 0) {
+            if (centerSection && centerSection.width > 0) {
                 Qt.callLater(centerSection.updateLayout)
             }
         }
@@ -184,8 +184,8 @@ PanelWindow {
         }
 
         property var notepadInstance: null
-        property bool notepadInstanceVisible: notepadInstance?.isVisible ?? false
-        
+        property bool notepadInstanceVisible: notepadInstance ? (notepadInstance.notepadVisible || false) : false
+
         readonly property bool hasActivePopout: {
             const loaders = [{
                                  "loader": appDrawerLoader,
@@ -217,7 +217,7 @@ PanelWindow {
                              }]
             return notepadInstanceVisible || loaders.some(item => {
                 if (item.loader) {
-                    return item.loader?.item?.[item.prop]
+                    return item.loader && item.loader.item ? item.loader.item[item.prop] : false
                 }
                 return false
             })
@@ -443,7 +443,7 @@ PanelWindow {
                         }
 
                         function getWidgetSection(parentItem) {
-                            if (!parentItem?.parent) {
+                            if (!parentItem || !parentItem.parent) {
                                 return "left"
                             }
                             if (parentItem.parent === leftSection) {
@@ -548,7 +548,7 @@ PanelWindow {
 
                                 for (var i = 0; i < centerRepeater.count; i++) {
                                     const item = centerRepeater.itemAt(i)
-                                    if (item?.active && item.item) {
+                                    if (item && item.active && item.item) {
                                         centerWidgets.push(item.item)
                                         totalWidgets++
                                         totalWidth += item.item.width
@@ -748,7 +748,7 @@ PanelWindow {
                                 parentScreen: root.screen
                                 onClicked: {
                                     appDrawerLoader.active = true
-                                    appDrawerLoader.item?.toggle()
+                                    if (appDrawerLoader.item) appDrawerLoader.item.toggle()
                                 }
                             }
                         }
@@ -885,7 +885,7 @@ PanelWindow {
                                 parentScreen: root.screen
                                 toggleProcessList: () => {
                                                        processListPopoutLoader.active = true
-                                                       return processListPopoutLoader.item?.toggle()
+                                                       return processListPopoutLoader.item ? processListPopoutLoader.item.toggle() : undefined
                                                    }
                             }
                         }
@@ -904,7 +904,7 @@ PanelWindow {
                                 parentScreen: root.screen
                                 toggleProcessList: () => {
                                                        processListPopoutLoader.active = true
-                                                       return processListPopoutLoader.item?.toggle()
+                                                       return processListPopoutLoader.item ? processListPopoutLoader.item.toggle() : undefined
                                                    }
                             }
                         }
@@ -923,7 +923,7 @@ PanelWindow {
                                 parentScreen: root.screen
                                 toggleProcessList: () => {
                                                        processListPopoutLoader.active = true
-                                                       return processListPopoutLoader.item?.toggle()
+                                                       return processListPopoutLoader.item ? processListPopoutLoader.item.toggle() : undefined
                                                    }
                             }
                         }
@@ -943,7 +943,7 @@ PanelWindow {
                                 widgetData: parent.widgetData
                                 toggleProcessList: () => {
                                                        processListPopoutLoader.active = true
-                                                       return processListPopoutLoader.item?.toggle()
+                                                       return processListPopoutLoader.item ? processListPopoutLoader.item.toggle() : undefined
                                                    }
                             }
                         }
@@ -970,7 +970,7 @@ PanelWindow {
                                 parentScreen: root.screen
                                 onClicked: {
                                     notificationCenterLoader.active = true
-                                    notificationCenterLoader.item?.toggle()
+                                    if (notificationCenterLoader.item) notificationCenterLoader.item.toggle()
                                 }
                             }
                         }
@@ -990,7 +990,7 @@ PanelWindow {
                                 parentScreen: root.screen
                                 onToggleBatteryPopup: {
                                     batteryPopoutLoader.active = true
-                                    batteryPopoutLoader.item?.toggle()
+                                    if (batteryPopoutLoader.item) batteryPopoutLoader.item.toggle()
                                 }
                             }
                         }
@@ -1009,7 +1009,7 @@ PanelWindow {
                                 parentScreen: root.screen
                                 onToggleVpnPopup: {
                                     vpnPopoutLoader.active = true
-                                    vpnPopoutLoader.item?.toggle()
+                                    if (vpnPopoutLoader.item) vpnPopoutLoader.item.toggle()
                                 }
                             }
                         }
@@ -1099,7 +1099,7 @@ PanelWindow {
 
                             NotepadButton {
                                 property var notepadInstance: topBarCore.notepadInstance
-                                isActive: notepadInstance?.isVisible ?? false
+                                isActive: notepadInstance ? (notepadInstance.notepadVisible || false) : false
                                 widgetHeight: root.widgetHeight
                                 barHeight: root.effectiveBarHeight
                                 section: topBarContent.getWidgetSection(parent) || "right"
@@ -1142,7 +1142,7 @@ PanelWindow {
                                 parentScreen: root.screen
                                 onClicked: {
                                     systemUpdateLoader.active = true
-                                    systemUpdateLoader.item?.toggle()
+                                    if (systemUpdateLoader.item) systemUpdateLoader.item.toggle()
                                 }
                             }
                         }

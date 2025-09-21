@@ -866,7 +866,7 @@ Item {
                             }
 
                             StyledText {
-                                text: "Automatically extract colors from wallpaper"
+                                text: "Use dynamic color schemes from Omarchy themes"
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.surfaceVariantText
                                 wrapMode: Text.WordWrap
@@ -878,8 +878,8 @@ Item {
                             id: toggle
 
                             anchors.verticalCenter: parent.verticalCenter
-                            checked: Theme.wallpaperPath !== "" && Theme.currentTheme === Theme.dynamic
-                            enabled: ToastService.wallpaperErrorStatus !== "matugen_missing" && Theme.wallpaperPath !== ""
+                            checked: Theme.currentTheme === Theme.dynamic
+                            enabled: true
                             onToggled: toggled => {
                                            if (toggled)
                                            Theme.switchTheme(Theme.dynamic)
@@ -889,13 +889,41 @@ Item {
                         }
                     }
 
-                    StyledText {
-                        text: "matugen not detected - dynamic theming unavailable"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.error
-                        visible: ToastService.wallpaperErrorStatus === "matugen_missing"
+
+                    Rectangle {
                         width: parent.width
+                        height: 1
+                        color: Theme.outline
+                        opacity: 0.2
+                        visible: Theme.currentTheme === Theme.dynamic
+                    }
+
+                    Column {
+                        width: parent.width
+                        spacing: Theme.spacingS
+                        visible: Theme.currentTheme === Theme.dynamic
                         leftPadding: Theme.iconSize + Theme.spacingM
+
+                        DankDropdown {
+                            width: parent.width - parent.leftPadding
+                            text: "Omarchy Theme"
+                            description: "Select Omarchy theme to use"
+                            currentValue: SettingsData.omarchyTheme
+                            options: ["catppuccin", "catppuccin-latte", "everforest", "gruvbox", "kanagawa", "matte-black", "nord", "osaka-jade", "ristretto", "rose-pine", "tokyo-night"]
+                            onValueChanged: value => {
+                                                SettingsData.setOmarchyTheme(value)
+                                                Theme.loadOmarchyColors()
+                                                Theme.colorUpdateTrigger++
+                                            }
+                        }
+
+                        StyledText {
+                            text: "Using predefined color schemes from Omarchy theme system"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceVariantText
+                            width: parent.width - parent.leftPadding
+                            wrapMode: Text.WordWrap
+                        }
                     }
                 }
             }
@@ -1491,18 +1519,12 @@ Item {
                                         }
                     }
 
-                    Rectangle {
+                    Row {
                         width: parent.width
-                        height: 60
-                        radius: Theme.cornerRadius
-                        color: "transparent"
+                        spacing: Theme.spacingM
 
                         Column {
-                            anchors.left: parent.left
-                            anchors.right: fontScaleControls.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.leftMargin: Theme.spacingM
-                            anchors.rightMargin: Theme.spacingM
+                            width: parent.width - fontScaleControls.width - Theme.spacingM
                             spacing: Theme.spacingXS
 
                             StyledText {
@@ -1513,7 +1535,7 @@ Item {
                             }
 
                             StyledText {
-                                text: "Scale all font sizes"
+                                text: "Scale all font sizes (" + (SettingsData.fontScale * 100).toFixed(0) + "%)"
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.surfaceVariantText
                                 width: parent.width
@@ -1523,12 +1545,8 @@ Item {
                         Row {
                             id: fontScaleControls
 
-                            width: 180
-                            height: 36
-                            anchors.right: parent.right
-                            anchors.rightMargin: 0
-                            anchors.verticalCenter: parent.verticalCenter
                             spacing: Theme.spacingS
+                            anchors.verticalCenter: parent.verticalCenter
 
                             DankActionButton {
                                 buttonSize: 32

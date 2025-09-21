@@ -6,13 +6,38 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
+import qs.Common
+import qs.Services
 
 Singleton {
     id: root
 
     readonly property list<MprisPlayer> availablePlayers: Mpris.players.values
 
-    property MprisPlayer activePlayer: availablePlayers.find(p => p.isPlaying) ?? availablePlayers.find(p => p.canControl && p.canPlay) ?? null
+    // Unified player that includes both MPRIS and HomeAssistant based on user preference
+    property var activePlayer: {
+        const mediaSource = SettingsData.mediaSource
+
+        if (mediaSource === "homeassistant" && HomeAssistantService.hasActiveMedia) {
+            return HomeAssistantService.mprisAdapter
+        }
+
+        if (mediaSource === "mpris") {
+            return availablePlayers.find(p => p.isPlaying) ?? availablePlayers.find(p => p.canControl && p.canPlay) ?? null
+        }
+
+        // Auto mode: prefer MPRIS if available, fallback to HomeAssistant
+        const mprisPlayer = availablePlayers.find(p => p.isPlaying) ?? availablePlayers.find(p => p.canControl && p.canPlay) ?? null
+        if (mprisPlayer) {
+            return mprisPlayer
+        }
+
+        if (HomeAssistantService.hasActiveMedia) {
+            return HomeAssistantService.mprisAdapter
+        }
+
+        return null
+    }
 
     IpcHandler {
         target: "mpris"
