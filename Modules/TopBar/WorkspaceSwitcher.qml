@@ -6,6 +6,7 @@ import Quickshell.Hyprland
 import qs.Common
 import qs.Services
 import qs.Widgets
+import "../../Common/IconUtils.js" as IconUtils
 
 Rectangle {
     id: root
@@ -32,6 +33,39 @@ Rectangle {
         return [1]
     }
 
+    function normalizeWorkspaceId(rawId, fallbackName) {
+        const numeric = Number(rawId)
+        if (!isNaN(numeric)) {
+            return numeric
+        }
+        const fromName = Number(fallbackName)
+        if (!isNaN(fromName)) {
+            return fromName
+        }
+        return rawId
+    }
+
+    function workspaceSortValue(ws) {
+        if (!ws) {
+            return Number.MAX_SAFE_INTEGER
+        }
+
+        if (ws.id !== undefined && ws.id !== -1) {
+            const normalized = normalizeWorkspaceId(ws.id, ws.name)
+            const numeric = Number(normalized)
+            if (!isNaN(numeric)) {
+                return numeric
+            }
+            return Number.MAX_SAFE_INTEGER - 1
+        }
+
+        if (ws.displayIndex !== undefined) {
+            return ws.displayIndex
+        }
+
+        return Number.MAX_SAFE_INTEGER
+    }
+
     function getWorkspaceIcons(ws) {
         if (!SettingsData.showWorkspaceApps || !ws) {
             return []
@@ -49,7 +83,11 @@ Rectangle {
             }
             targetWorkspaceId = workspace.id
         } else if (CompositorService.isHyprland) {
-            targetWorkspaceId = ws.id !== undefined ? ws.id : ws
+            const normalized = normalizeWorkspaceId(ws.id !== undefined ? ws.id : ws, ws.name)
+            if (normalized === null || normalized === undefined || normalized === -1) {
+                return []
+            }
+            targetWorkspaceId = normalized
         } else {
             return []
         }
@@ -69,10 +107,9 @@ Rectangle {
                          if (CompositorService.isNiri) {
                              winWs = w.workspace_id
                          } else {
-                             // For Hyprland, we need to find the corresponding Hyprland toplevel to get workspace
                              const hyprlandToplevels = Array.from(Hyprland.toplevels?.values || [])
                              const hyprToplevel = hyprlandToplevels.find(ht => ht.wayland === w)
-                             winWs = hyprToplevel?.workspace?.id
+                             winWs = normalizeWorkspaceId(hyprToplevel?.workspace?.id, hyprToplevel?.workspace?.name)
                          }
 
 
@@ -80,42 +117,89 @@ Rectangle {
                              return
                          }
 
-                         const keyBase = (w.app_id || w.appId || w.class || w.windowClass || "unknown").toLowerCase()
-                         const key = isActiveWs ? `${keyBase}_${i}` : keyBase
+                        const keyBase = (w.app_id || w.appId || w.class || w.windowClass || "unknown").toLowerCase()
+                        const key = isActiveWs ? `${keyBase}_${i}` : keyBase
 
-                         if (!byApp[key]) {
-                             const moddedId = Paths.moddedAppId(keyBase)
-                             const isSteamApp = moddedId.toLowerCase().includes("steam_app")
-                             const icon = isSteamApp ? "" : Quickshell.iconPath(DesktopEntries.heuristicLookup(moddedId)?.icon, true)
-                             byApp[key] = {
-                                 "type": "icon",
-                                 "icon": icon,
-                                 "isSteamApp": isSteamApp,
-                                 "active": !!(w.activated || (CompositorService.isNiri && w.is_focused)),
-                                 "count": 1,
-                                 "windowId": w.address || w.id,
-                                 "fallbackText": w.appId || w.class || w.title || ""
-                             }
-                         } else {
-                             byApp[key].count++
-                             if (w.activated || (CompositorService.isNiri && w.is_focused)) {
-                                 byApp[key].active = true
-                             }
-                         }
-                     })
+                        if (!byApp[key]) {
+                            const moddedId = Paths.moddedAppId(keyBase)
+                            const isSteamApp = moddedId.toLowerCase().includes("steam_app")
+                            const icon = isSteamApp ? "" : IconUtils.safeIconPath(Quickshell, DesktopEntries.heuristicLookup(moddedId)?.icon, "application-x-executable")
+                            byApp[key] = {
+                                "type": "icon",
+                                "icon": icon,
+                                "isSteamApp": isSteamApp,
+                                "active": !!(w.activated || (CompositorService.isNiri && w.is_focused)),
+                                "count": 1,
+                                "windowId": w.address || w.id,
+                                "fallbackText": w.appId || w.class || w.title || ""
+                            }
+                        } else {
+                            byApp[key].count++
+                            if (w.activated || (CompositorService.isNiri && w.is_focused)) {
+                                byApp[key].active = true
+                            }
+                        }
+                    })
 
         return Object.values(byApp)
     }
 
     function padWorkspaces(list) {
         const padded = list.slice()
-        const placeholder = CompositorService.isHyprland ? {
-                                                               "id": -1,
-                                                               "name": ""
-                                                           } : -1
-        while (padded.length < 3) {
-            padded.push(placeholder)
+
+        if (CompositorService.isHyprland) {
+            const numericIds = new Set()
+
+            const registerNumeric = value => {
+                const numeric = Number(value)
+                if (!isNaN(numeric)) {
+                    numericIds.add(numeric)
+                }
+            }
+
+            padded.forEach(ws => {
+                               if (!ws) {
+                                   return
+                               }
+
+                               if (ws.id !== undefined && ws.id !== -1) {
+                                   const normalized = normalizeWorkspaceId(ws.id, ws.name)
+                                   registerNumeric(normalized)
+                               } else if (ws.displayIndex !== undefined) {
+                                   registerNumeric(ws.displayIndex)
+                               }
+                           })
+
+            let highest = 0
+            numericIds.forEach(value => {
+                               if (value > highest) {
+                                   highest = value
+                               }
+                           })
+
+            const minimumVisible = 3
+            const targetMax = Math.max(minimumVisible, highest)
+
+            for (let idx = 1; idx <= targetMax; idx++) {
+                if (numericIds.has(idx)) {
+                    continue
+                }
+
+                padded.push({
+                               "id": -1,
+                               "name": String(idx),
+                               "displayIndex": idx
+                           })
+                numericIds.add(idx)
+            }
+
+            padded.sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b));
+        } else {
+            while (padded.length < 3) {
+                padded.push(-1)
+            }
         }
+
         return padded
     }
 
@@ -147,37 +231,131 @@ Rectangle {
 
     function getHyprlandWorkspaces() {
         const workspaces = Hyprland.workspaces?.values || []
-        
+
         if (!root.screenName || !SettingsData.workspacesPerMonitor) {
-            // Show all workspaces on all monitors if per-monitor filtering is disabled
-            const sorted = workspaces.slice().sort((a, b) => a.id - b.id)
+            const sorted = workspaces.slice().sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b))
             return sorted.length > 0 ? sorted : [{
                         "id": 1,
                         "name": "1"
                     }]
         }
 
-        // Filter workspaces for this specific monitor using lastIpcObject.monitor
-        // This matches the approach from the original kyle-config
-        const monitorWorkspaces = workspaces.filter(ws => {
-            return ws.lastIpcObject && ws.lastIpcObject.monitor === root.screenName
-        })
-        
-        if (monitorWorkspaces.length === 0) {
-            // Fallback if no workspaces exist for this monitor
-            return [{
-                        "id": 1,
-                        "name": "1"
-                    }]
+        const monitor = (Hyprland.monitors?.values || []).find(m => m && m.name === root.screenName)
+
+        const monitorName = monitor ? monitor.name : root.screenName
+        const monitorId = monitor && monitor.id !== undefined ? monitor.id : undefined
+        const assignedIds = []
+
+        if (monitor && monitor.workspaces !== undefined) {
+            const workspacesList = Array.isArray(monitor.workspaces)
+                ? monitor.workspaces
+                : (typeof monitor.workspaces === "object" && monitor.workspaces.values)
+                    ? monitor.workspaces.values
+                    : []
+
+            workspacesList.forEach(item => {
+                const normalized = normalizeWorkspaceId(item && item.id !== undefined ? item.id : item, item?.name)
+                if (normalized !== undefined && normalized !== null) {
+                    assignedIds.push(normalized)
+                }
+            })
         }
 
-        // Return all workspaces for this monitor, sorted by ID
-        return monitorWorkspaces.sort((a, b) => a.id - b.id)
+        const monitorWorkspaces = workspaces.filter(ws => {
+            if (!ws) {
+                return false
+            }
+
+            const normalizedId = normalizeWorkspaceId(ws.id, ws.name)
+            if (assignedIds.includes(normalizedId)) {
+                return true
+            }
+
+            if (ws.lastIpcObject) {
+                if (ws.lastIpcObject.monitor === monitorName) {
+                    return true
+                }
+                if (monitorId !== undefined && ws.lastIpcObject.monitorID === monitorId) {
+                    return true
+                }
+            }
+
+            if (ws.monitor) {
+                if (typeof ws.monitor === "string" && ws.monitor === monitorName) {
+                    return true
+                }
+                if (ws.monitor.name && ws.monitor.name === monitorName) {
+                    return true
+                }
+                if (monitor && ws.monitor === monitor) {
+                    return true
+                }
+                if (monitorId !== undefined && ws.monitor.id !== undefined && ws.monitor.id === monitorId) {
+                    return true
+                }
+            }
+
+            if (monitorId !== undefined && ws.monitorID !== undefined && ws.monitorID === monitorId) {
+                return true
+            }
+
+            return false
+        })
+
+        if (monitorWorkspaces.length === 0 && assignedIds.length > 0) {
+            // Create lightweight placeholders for assigned workspaces that aren't in the IPC list yet
+            return assignedIds.map(id => ({
+                                          "id": id,
+                                          "name": String(id),
+                                          "persistent": true
+                                      }))
+        }
+
+        let sorted = monitorWorkspaces.slice().sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b))
+
+        if (assignedIds.length > 0) {
+            const numericAssigned = assignedIds
+                .map(id => Number(id))
+                .filter(id => !isNaN(id))
+                .sort((a, b) => a - b)
+
+            if (numericAssigned.length > 0) {
+                const existingNumeric = new Set()
+                sorted.forEach(ws => {
+                                   const normalized = normalizeWorkspaceId(ws.id, ws.name)
+                                   const numeric = Number(normalized)
+                                   if (!isNaN(numeric)) {
+                                       existingNumeric.add(numeric)
+                                   }
+                               })
+
+                numericAssigned.forEach(id => {
+                                        if (existingNumeric.has(id)) {
+                                            return
+                                        }
+
+                                        sorted.push({
+                                                       "id": -1,
+                                                       "name": String(id),
+                                                       "displayIndex": id,
+                                                       "persistent": true
+                                                   })
+                                    })
+
+                sorted = sorted.sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b))
+            }
+        }
+
+        return sorted.length > 0 ? sorted : [{
+                    "id": 1,
+                    "name": "1"
+                }]
     }
 
     function getHyprlandActiveWorkspace() {
         if (!root.screenName || !SettingsData.workspacesPerMonitor) {
-            return Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
+            const focused = Hyprland.focusedWorkspace
+            return focused ? normalizeWorkspaceId(focused.id, focused.name) : 1
         }
 
         // Find the monitor object for this screen
@@ -189,7 +367,7 @@ Rectangle {
         }
 
         // Use the monitor's active workspace ID (like original config)
-        return currentMonitor.activeWorkspace?.id ?? 1
+        return normalizeWorkspaceId(currentMonitor.activeWorkspace?.id, currentMonitor.activeWorkspace?.name) ?? 1
     }
 
     readonly property real padding: (widgetHeight - workspaceRow.implicitHeight) / 2
@@ -273,7 +451,11 @@ Rectangle {
             Rectangle {
                 property bool isActive: {
                     if (CompositorService.isHyprland) {
-                        return modelData && modelData.id === root.currentWorkspace
+                        if (!modelData || modelData.id === -1) {
+                            return false
+                        }
+                        const normalized = normalizeWorkspaceId(modelData.id, modelData.name)
+                        return normalized === root.currentWorkspace
                     }
                     return modelData === root.currentWorkspace
                 }
@@ -296,7 +478,7 @@ Rectangle {
                 }
                 property var iconData: workspaceData?.name ? SettingsData.getWorkspaceNameIcon(workspaceData.name) : null
                 property bool hasIcon: iconData !== null
-                property var icons: SettingsData.showWorkspaceApps ? root.getWorkspaceIcons(CompositorService.isHyprland ? modelData : (modelData === -1 ? null : modelData)) : []
+                property var icons: SettingsData.showWorkspaceApps ? root.getWorkspaceIcons(isPlaceholder ? null : (CompositorService.isHyprland ? modelData : modelData)) : []
 
                 width: {
                     if (SettingsData.showWorkspaceApps) {
@@ -326,8 +508,9 @@ Rectangle {
 
                         if (CompositorService.isNiri) {
                             NiriService.switchToWorkspace(modelData - 1)
-                        } else if (CompositorService.isHyprland && modelData?.id) {
-                            Hyprland.dispatch(`workspace ${modelData.id}`)
+                        } else if (CompositorService.isHyprland && modelData?.id !== undefined) {
+                            const target = modelData.name && modelData.name.length > 0 ? modelData.name : modelData.id
+                            Hyprland.dispatch(`workspace ${target}`)
                         }
                     }
                 }
@@ -425,10 +608,19 @@ Rectangle {
                         const isPlaceholder = CompositorService.isHyprland ? (modelData?.id === -1) : (modelData === -1)
 
                         if (isPlaceholder) {
+                            if (CompositorService.isHyprland) {
+                                return modelData?.displayIndex !== undefined ? modelData.displayIndex : index + 1
+                            }
                             return index + 1
                         }
 
-                        return CompositorService.isHyprland ? (modelData?.id || "") : (modelData - 1)
+                        if (CompositorService.isHyprland) {
+                            if (modelData?.displayIndex !== undefined) {
+                                return modelData.displayIndex
+                            }
+                            return modelData?.id || ""
+                        }
+                        return modelData
                     }
                     color: isActive ? Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.95) : isPlaceholder ? Theme.surfaceTextAlpha : Theme.surfaceTextMedium
                     font.pixelSize: Theme.fontSizeSmall
