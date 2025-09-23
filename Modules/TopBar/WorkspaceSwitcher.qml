@@ -94,7 +94,6 @@ Rectangle {
 
         const wins = CompositorService.isNiri ? (NiriService.windows || []) : CompositorService.sortedToplevels
 
-
         const byApp = {}
         const isActiveWs = CompositorService.isNiri ? NiriService.allWorkspaces.some(ws => ws.id === targetWorkspaceId && ws.is_active) : targetWorkspaceId === root.currentWorkspace
 
@@ -112,34 +111,33 @@ Rectangle {
                              winWs = normalizeWorkspaceId(hyprToplevel?.workspace?.id, hyprToplevel?.workspace?.name)
                          }
 
-
                          if (winWs === undefined || winWs === null || winWs !== targetWorkspaceId) {
                              return
                          }
 
-                        const keyBase = (w.app_id || w.appId || w.class || w.windowClass || "unknown").toLowerCase()
-                        const key = isActiveWs ? `${keyBase}_${i}` : keyBase
+                         const keyBase = (w.app_id || w.appId || w.class || w.windowClass || "unknown").toLowerCase()
+                         const key = isActiveWs ? `${keyBase}_${i}` : keyBase
 
-                        if (!byApp[key]) {
-                            const moddedId = Paths.moddedAppId(keyBase)
-                            const isSteamApp = moddedId.toLowerCase().includes("steam_app")
-                            const icon = isSteamApp ? "" : IconUtils.safeIconPath(Quickshell, DesktopEntries.heuristicLookup(moddedId)?.icon, "application-x-executable")
-                            byApp[key] = {
-                                "type": "icon",
-                                "icon": icon,
-                                "isSteamApp": isSteamApp,
-                                "active": !!(w.activated || (CompositorService.isNiri && w.is_focused)),
-                                "count": 1,
-                                "windowId": w.address || w.id,
-                                "fallbackText": w.appId || w.class || w.title || ""
-                            }
-                        } else {
-                            byApp[key].count++
-                            if (w.activated || (CompositorService.isNiri && w.is_focused)) {
-                                byApp[key].active = true
-                            }
-                        }
-                    })
+                         if (!byApp[key]) {
+                             const moddedId = Paths.moddedAppId(keyBase)
+                             const isSteamApp = moddedId.toLowerCase().includes("steam_app")
+                             const icon = isSteamApp ? "" : IconUtils.safeIconPath(Quickshell, DesktopEntries.heuristicLookup(moddedId)?.icon, "application-x-executable")
+                             byApp[key] = {
+                                 "type": "icon",
+                                 "icon": icon,
+                                 "isSteamApp": isSteamApp,
+                                 "active": !!(w.activated || (CompositorService.isNiri && w.is_focused)),
+                                 "count": 1,
+                                 "windowId": w.address || w.id,
+                                 "fallbackText": w.appId || w.class || w.title || ""
+                             }
+                         } else {
+                             byApp[key].count++
+                             if (w.activated || (CompositorService.isNiri && w.is_focused)) {
+                                 byApp[key].active = true
+                             }
+                         }
+                     })
 
         return Object.values(byApp)
     }
@@ -172,28 +170,28 @@ Rectangle {
 
             let highest = 0
             numericIds.forEach(value => {
-                               if (value > highest) {
-                                   highest = value
-                               }
-                           })
+                                   if (value > highest) {
+                                       highest = value
+                                   }
+                               })
 
             const minimumVisible = 3
             const targetMax = Math.max(minimumVisible, highest)
 
-            for (let idx = 1; idx <= targetMax; idx++) {
+            for (var idx = 1; idx <= targetMax; idx++) {
                 if (numericIds.has(idx)) {
                     continue
                 }
 
                 padded.push({
-                               "id": -1,
-                               "name": String(idx),
-                               "displayIndex": idx
-                           })
+                                "id": -1,
+                                "name": String(idx),
+                                "displayIndex": idx
+                            })
                 numericIds.add(idx)
             }
 
-            padded.sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b));
+            padded.sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b))
         } else {
             while (padded.length < 3) {
                 padded.push(-1)
@@ -235,9 +233,9 @@ Rectangle {
         if (!root.screenName || !SettingsData.workspacesPerMonitor) {
             const sorted = workspaces.slice().sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b))
             return sorted.length > 0 ? sorted : [{
-                        "id": 1,
-                        "name": "1"
-                    }]
+                                                     "id": 1,
+                                                     "name": "1"
+                                                 }]
         }
 
         const monitor = (Hyprland.monitors?.values || []).find(m => m && m.name === root.screenName)
@@ -247,77 +245,70 @@ Rectangle {
         const assignedIds = []
 
         if (monitor && monitor.workspaces !== undefined) {
-            const workspacesList = Array.isArray(monitor.workspaces)
-                ? monitor.workspaces
-                : (typeof monitor.workspaces === "object" && monitor.workspaces.values)
-                    ? monitor.workspaces.values
-                    : []
+            const workspacesList = Array.isArray(monitor.workspaces) ? monitor.workspaces : (typeof monitor.workspaces === "object" && monitor.workspaces.values) ? monitor.workspaces.values : []
 
             workspacesList.forEach(item => {
-                const normalized = normalizeWorkspaceId(item && item.id !== undefined ? item.id : item, item?.name)
-                if (normalized !== undefined && normalized !== null) {
-                    assignedIds.push(normalized)
-                }
-            })
+                                       const normalized = normalizeWorkspaceId(item && item.id !== undefined ? item.id : item, item?.name)
+                                       if (normalized !== undefined && normalized !== null) {
+                                           assignedIds.push(normalized)
+                                       }
+                                   })
         }
 
         const monitorWorkspaces = workspaces.filter(ws => {
-            if (!ws) {
-                return false
-            }
+                                                        if (!ws) {
+                                                            return false
+                                                        }
 
-            const normalizedId = normalizeWorkspaceId(ws.id, ws.name)
-            if (assignedIds.includes(normalizedId)) {
-                return true
-            }
+                                                        const normalizedId = normalizeWorkspaceId(ws.id, ws.name)
+                                                        if (assignedIds.includes(normalizedId)) {
+                                                            return true
+                                                        }
 
-            if (ws.lastIpcObject) {
-                if (ws.lastIpcObject.monitor === monitorName) {
-                    return true
-                }
-                if (monitorId !== undefined && ws.lastIpcObject.monitorID === monitorId) {
-                    return true
-                }
-            }
+                                                        if (ws.lastIpcObject) {
+                                                            if (ws.lastIpcObject.monitor === monitorName) {
+                                                                return true
+                                                            }
+                                                            if (monitorId !== undefined && ws.lastIpcObject.monitorID === monitorId) {
+                                                                return true
+                                                            }
+                                                        }
 
-            if (ws.monitor) {
-                if (typeof ws.monitor === "string" && ws.monitor === monitorName) {
-                    return true
-                }
-                if (ws.monitor.name && ws.monitor.name === monitorName) {
-                    return true
-                }
-                if (monitor && ws.monitor === monitor) {
-                    return true
-                }
-                if (monitorId !== undefined && ws.monitor.id !== undefined && ws.monitor.id === monitorId) {
-                    return true
-                }
-            }
+                                                        if (ws.monitor) {
+                                                            if (typeof ws.monitor === "string" && ws.monitor === monitorName) {
+                                                                return true
+                                                            }
+                                                            if (ws.monitor.name && ws.monitor.name === monitorName) {
+                                                                return true
+                                                            }
+                                                            if (monitor && ws.monitor === monitor) {
+                                                                return true
+                                                            }
+                                                            if (monitorId !== undefined && ws.monitor.id !== undefined && ws.monitor.id === monitorId) {
+                                                                return true
+                                                            }
+                                                        }
 
-            if (monitorId !== undefined && ws.monitorID !== undefined && ws.monitorID === monitorId) {
-                return true
-            }
+                                                        if (monitorId !== undefined && ws.monitorID !== undefined && ws.monitorID === monitorId) {
+                                                            return true
+                                                        }
 
-            return false
-        })
+                                                        return false
+                                                    })
 
         if (monitorWorkspaces.length === 0 && assignedIds.length > 0) {
             // Create lightweight placeholders for assigned workspaces that aren't in the IPC list yet
             return assignedIds.map(id => ({
-                                          "id": id,
-                                          "name": String(id),
-                                          "persistent": true
-                                      }))
+                                              "id": id,
+                                              "name": String(id),
+                                              "persistent": true
+                                          }))
         }
 
         let sorted = monitorWorkspaces.slice().sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b))
 
         if (assignedIds.length > 0) {
-            const numericAssigned = assignedIds
-                .map(id => Number(id))
-                .filter(id => !isNaN(id))
-                .sort((a, b) => a - b)
+            const numericAssigned = assignedIds.map(id => Number(id)).filter(id => !isNaN(id)).sort((a, b) => a - b)
 
             if (numericAssigned.length > 0) {
                 const existingNumeric = new Set()
@@ -330,26 +321,26 @@ Rectangle {
                                })
 
                 numericAssigned.forEach(id => {
-                                        if (existingNumeric.has(id)) {
-                                            return
-                                        }
+                                            if (existingNumeric.has(id)) {
+                                                return
+                                            }
 
-                                        sorted.push({
-                                                       "id": -1,
-                                                       "name": String(id),
-                                                       "displayIndex": id,
-                                                       "persistent": true
-                                                   })
-                                    })
+                                            sorted.push({
+                                                            "id": -1,
+                                                            "name": String(id),
+                                                            "displayIndex": id,
+                                                            "persistent": true
+                                                        })
+                                        })
 
                 sorted = sorted.sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b))
             }
         }
 
         return sorted.length > 0 ? sorted : [{
-                    "id": 1,
-                    "name": "1"
-                }]
+                                                 "id": 1,
+                                                 "name": "1"
+                                             }]
     }
 
     function getHyprlandActiveWorkspace() {
@@ -361,7 +352,7 @@ Rectangle {
         // Find the monitor object for this screen
         const monitors = Hyprland.monitors?.values || []
         const currentMonitor = monitors.find(monitor => monitor.name === root.screenName)
-        
+
         if (!currentMonitor) {
             return 1
         }
@@ -628,14 +619,22 @@ Rectangle {
                 }
 
                 Behavior on width {
-		    // When having more icons, animation becomes clunky
-		    enabled: (!SettingsData.showWorkspaceApps || SettingsData.maxWorkspaceIcons <= 3)
+                    // When having more icons, animation becomes clunky
+                    enabled: (!SettingsData.showWorkspaceApps || SettingsData.maxWorkspaceIcons <= 3)
                     NumberAnimation {
                         duration: Theme.mediumDuration
                         easing.type: Theme.emphasizedEasing
                     }
                 }
 
+                Behavior on color {
+                    // When having more icons, animation becomes clunky
+                    enabled: (!SettingsData.showWorkspaceApps || SettingsData.maxWorkspaceIcons <= 3)
+                    ColorAnimation {
+                        duration: Theme.mediumDuration
+                        easing.type: Theme.emphasizedEasing
+                    }
+                }
             }
         }
     }
