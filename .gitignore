@@ -102,3 +102,5 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+# Local hyprland_de assets (external reference configs, cache)
+hyprland_de/
