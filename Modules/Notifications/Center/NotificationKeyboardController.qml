@@ -425,7 +425,10 @@ QtObject {
                 clearSelected()
                 event.accepted = true
             } else if (event.key === Qt.Key_Tab) {
-                selectNextWrapping()
+                selectNext()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Backtab) {
+                selectPrevious()
                 event.accepted = true
             } else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9) {
                 const actionIndex = event.key - Qt.Key_1

@@ -4,8 +4,9 @@ import Quickshell
 import qs.Common
 import qs.Services
 import qs.Widgets
+import qs.Modules.ControlCenter.Widgets
 
-BasePill {
+CompoundPill {
     id: root
 
     readonly property var activePlayer: HomeAssistantService.activeMediaPlayer || null
@@ -44,7 +45,7 @@ BasePill {
     }
     isActive: hasActiveMedia || currentState === "playing" || currentState === "paused"
 
-    onClicked: {
+    onToggled: {
         if (HomeAssistantService.haAvailable && appletvAvailable) {
             HomeAssistantService.mediaPlayPause()
         }

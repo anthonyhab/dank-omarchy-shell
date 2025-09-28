@@ -33,6 +33,20 @@ Item {
                         } else if (event.key === Qt.Key_Left && appLauncher.viewMode === "grid") {
                             appLauncher.selectPreviousInRow()
                             event.accepted = true
+                        } else if (event.key === Qt.Key_Tab) {
+                            if (appLauncher.viewMode === "grid") {
+                                appLauncher.selectNextInRow()
+                            } else {
+                                appLauncher.selectNext()
+                            }
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Backtab) {
+                            if (appLauncher.viewMode === "grid") {
+                                appLauncher.selectPreviousInRow()
+                            } else {
+                                appLauncher.selectPrevious()
+                            }
+                            event.accepted = true
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                             appLauncher.launchSelected()
                             event.accepted = true
@@ -59,23 +73,21 @@ Item {
 
     Column {
         anchors.fill: parent
-        anchors.margins: Theme.spacingL
-        spacing: Theme.spacingL
+        anchors.margins: Theme.spacingM
+        spacing: Theme.spacingM
 
         Rectangle {
             width: parent.width
-            height: categorySelector.height + Theme.spacingM * 2
+            height: categorySelector.height + Theme.spacingS * 2
             radius: Theme.cornerRadius
-            color: Theme.surfaceVariantAlpha
-            border.color: Theme.outlineMedium
-            border.width: 1
+            color: "transparent"
             visible: appLauncher.categories.length > 1 || appLauncher.model.count > 0
 
             CategorySelector {
                 id: categorySelector
 
                 anchors.centerIn: parent
-                width: parent.width - Theme.spacingM * 2
+                width: parent.width - Theme.spacingS * 2
                 categories: appLauncher.categories
                 selectedCategory: appLauncher.selectedCategory
                 compact: false
@@ -88,14 +100,15 @@ Item {
         Row {
             width: parent.width
             spacing: Theme.spacingM
+            leftPadding: Theme.spacingS
 
             DankTextField {
                 id: searchField
 
-                width: parent.width - 80 - Theme.spacingM
+                width: parent.width - 80 - Theme.spacingL
                 height: 56
                 cornerRadius: Theme.cornerRadius
-                backgroundColor: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, Theme.getContentBackgroundAlpha() * 0.7)
+                backgroundColor: Theme.surfaceContainerHigh
                 normalBorderColor: Theme.outlineMedium
                 focusedBorderColor: Theme.primary
                 leftIconName: "search"
@@ -125,7 +138,7 @@ Item {
                                         else if (appLauncher.model.count > 0)
                                         appLauncher.launchApp(appLauncher.model.get(0))
                                         event.accepted = true
-                                    } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up || event.key === Qt.Key_Left || event.key === Qt.Key_Right || ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && text.length === 0)) {
+                                    } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up || event.key === Qt.Key_Left || event.key === Qt.Key_Right || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab || ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && text.length === 0)) {
                                         event.accepted = false
                                     }
                                 }
@@ -141,8 +154,6 @@ Item {
                     height: 36
                     radius: Theme.cornerRadius
                     color: appLauncher.viewMode === "list" ? Theme.primaryHover : listViewArea.containsMouse ? Theme.surfaceHover : "transparent"
-                    border.color: appLauncher.viewMode === "list" ? Theme.primarySelected : "transparent"
-                    border.width: 1
 
                     DankIcon {
                         anchors.centerIn: parent
@@ -168,8 +179,6 @@ Item {
                     height: 36
                     radius: Theme.cornerRadius
                     color: appLauncher.viewMode === "grid" ? Theme.primaryHover : gridViewArea.containsMouse ? Theme.surfaceHover : "transparent"
-                    border.color: appLauncher.viewMode === "grid" ? Theme.primarySelected : "transparent"
-                    border.width: 1
 
                     DankIcon {
                         anchors.centerIn: parent

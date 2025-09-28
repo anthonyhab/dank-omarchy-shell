@@ -47,21 +47,25 @@ key_of() {
   local mode=$(echo "$json" | sed 's/.*"mode": *"\([^"]*\)".*/\1/')
   local icon=$(echo "$json" | sed 's/.*"iconTheme": *"\([^"]*\)".*/\1/')
   local matugen_type=$(echo "$json" | sed 's/.*"matugenType": *"\([^"]*\)".*/\1/')
+  local surface_base=$(echo "$json" | sed 's/.*"surfaceBase": *"\([^"]*\)".*/\1/')
   [[ -z "$icon" ]] && icon="System Default"
   [[ -z "$matugen_type" ]] && matugen_type="scheme-tonal-spot"
-  echo "${kind}|${value}|${mode}|${icon}|${matugen_type}" | sha256sum | cut -d' ' -f1
+  [[ -z "$surface_base" ]] && surface_base="sc"
+  echo "${kind}|${value}|${mode}|${icon}|${matugen_type}|${surface_base}" | sha256sum | cut -d' ' -f1
 }
 
 build_once() {
   local json="$1"
-  local kind value mode icon matugen_type
+  local kind value mode icon matugen_type surface_base
   kind=$(echo "$json" | sed 's/.*"kind": *"\([^"]*\)".*/\1/')
   value=$(echo "$json" | sed 's/.*"value": *"\([^"]*\)".*/\1/')
   mode=$(echo "$json" | sed 's/.*"mode": *"\([^"]*\)".*/\1/')
   icon=$(echo "$json" | sed 's/.*"iconTheme": *"\([^"]*\)".*/\1/')
   matugen_type=$(echo "$json" | sed 's/.*"matugenType": *"\([^"]*\)".*/\1/')
+  surface_base=$(echo "$json" | sed 's/.*"surfaceBase": *"\([^"]*\)".*/\1/')
   [[ -z "$icon" ]] && icon="System Default"
   [[ -z "$matugen_type" ]] && matugen_type="scheme-tonal-spot"
+  [[ -z "$surface_base" ]] && surface_base="sc"
 
   CONFIG_DIR="${CONFIG_DIR:-$HOME/.config}"
 
@@ -70,16 +74,21 @@ build_once() {
 
   cat "$SHELL_DIR/matugen/configs/base.toml" > "$TMP_CFG"
   echo "" >> "$TMP_CFG"
+
+  # Always include dank config for dms-colors.json
+  cat "$SHELL_DIR/matugen/configs/dank.toml" >> "$TMP_CFG"
+  echo "" >> "$TMP_CFG"
+
   if command -v niri >/dev/null 2>&1; then
     cat "$SHELL_DIR/matugen/configs/niri.toml" >> "$TMP_CFG"
     echo "" >> "$TMP_CFG"
   fi
-  
+
   if command -v qt5ct >/dev/null 2>&1; then
     cat "$SHELL_DIR/matugen/configs/qt5ct.toml" >> "$TMP_CFG"
     echo "" >> "$TMP_CFG"
   fi
-  
+
   if command -v qt6ct >/dev/null 2>&1; then
     cat "$SHELL_DIR/matugen/configs/qt6ct.toml" >> "$TMP_CFG"
     echo "" >> "$TMP_CFG"
@@ -106,6 +115,34 @@ build_once() {
   sed -i "/\[templates\.gtk3\]/,/^$/ s|input_path = './matugen/templates/gtk-colors.css'|input_path = '$COLLOID_TEMPLATE'|" "$TMP_CFG"
   sed -i "s|input_path = './matugen/templates/|input_path = '$SHELL_DIR/matugen/templates/|g" "$TMP_CFG"
 
+  # Handle surface shifting if needed
+  if [[ "$surface_base" == "s" ]]; then
+    TMP_TEMPLATES_DIR="$(mktemp -d)"
+    trap 'rm -rf "$TMP_TEMPLATES_DIR"' RETURN
+
+    # Create shifted versions of templates
+    for template in "$SHELL_DIR/matugen/templates"/*.{css,conf,json,kdl,colors}; do
+      [[ -f "$template" ]] || continue
+      template_name="$(basename "$template")"
+      shifted_template="$TMP_TEMPLATES_DIR/$template_name"
+
+      # Apply surface shifting transformations
+      sed -e 's/{{colors\.surface\.default\.hex}}/{{colors.background.default.hex}}/g' \
+          -e 's/{{colors\.surface_container\.default\.hex}}/{{colors.surface.default.hex}}/g' \
+          -e 's/{{colors\.surface_container_high\.default\.hex}}/{{colors.surface_container.default.hex}}/g' \
+          -e 's/{{colors\.surface_container_highest\.default\.hex}}/{{colors.surface_container_high.default.hex}}/g' \
+          "$template" > "$shifted_template"
+    done
+
+    # Update config to use shifted templates
+    sed -i "s|input_path = '$SHELL_DIR/matugen/templates/|input_path = '$TMP_TEMPLATES_DIR/|g" "$TMP_CFG"
+
+    # Handle the special colloid template path
+    if [[ -f "$TMP_TEMPLATES_DIR/gtk3-colors.css" ]]; then
+      sed -i "/\[templates\.gtk3\]/,/^$/ s|input_path = '$COLLOID_TEMPLATE'|input_path = '$TMP_TEMPLATES_DIR/gtk3-colors.css'|" "$TMP_CFG"
+    fi
+  fi
+
   pushd "$SHELL_DIR" >/dev/null
   MAT_MODE=(-m "$mode")
   MAT_TYPE=(-t "$matugen_type")
@@ -129,21 +166,27 @@ build_once() {
   echo "[config]" > "$TMP_CONTENT_CFG"
   echo "" >> "$TMP_CONTENT_CFG"
   
+  # Use shifted templates for content config if surface_base is "s"
+  CONTENT_TEMPLATES_PATH="$SHELL_DIR/matugen/templates/"
+  if [[ "$surface_base" == "s" && -n "${TMP_TEMPLATES_DIR:-}" ]]; then
+    CONTENT_TEMPLATES_PATH="$TMP_TEMPLATES_DIR/"
+  fi
+
   if command -v ghostty >/dev/null 2>&1; then
     cat "$SHELL_DIR/matugen/configs/ghostty.toml" >> "$TMP_CONTENT_CFG"
-    sed -i "s|input_path = './matugen/templates/|input_path = '$SHELL_DIR/matugen/templates/|g" "$TMP_CONTENT_CFG"
+    sed -i "s|input_path = './matugen/templates/|input_path = '${CONTENT_TEMPLATES_PATH}|g" "$TMP_CONTENT_CFG"
     echo "" >> "$TMP_CONTENT_CFG"
   fi
-  
+
   if command -v kitty >/dev/null 2>&1; then
     cat "$SHELL_DIR/matugen/configs/kitty.toml" >> "$TMP_CONTENT_CFG"
-    sed -i "s|input_path = './matugen/templates/|input_path = '$SHELL_DIR/matugen/templates/|g" "$TMP_CONTENT_CFG"
+    sed -i "s|input_path = './matugen/templates/|input_path = '${CONTENT_TEMPLATES_PATH}|g" "$TMP_CONTENT_CFG"
     echo "" >> "$TMP_CONTENT_CFG"
   fi
-  
+
   if command -v dgop >/dev/null 2>&1; then
     cat "$SHELL_DIR/matugen/configs/dgop.toml" >> "$TMP_CONTENT_CFG"
-    sed -i "s|input_path = './matugen/templates/|input_path = '$SHELL_DIR/matugen/templates/|g" "$TMP_CONTENT_CFG"
+    sed -i "s|input_path = './matugen/templates/|input_path = '${CONTENT_TEMPLATES_PATH}|g" "$TMP_CONTENT_CFG"
     echo "" >> "$TMP_CONTENT_CFG"
   fi
   
@@ -181,6 +224,9 @@ build_once() {
       printf "%s\n\n" "$OUT" > "$TMP"
       cat "$CONFIG_DIR/ghostty/config-dankcolors" >> "$TMP"
       mv "$TMP" "$CONFIG_DIR/ghostty/config-dankcolors"
+      if [[ -f "$CONFIG_DIR/ghostty/config" ]] && grep -q "^[^#]*config-dankcolors" "$CONFIG_DIR/ghostty/config" 2>/dev/null; then
+        pkill -USR2 -x ghostty >/dev/null 2>&1 || true
+      fi
     fi
   fi
 

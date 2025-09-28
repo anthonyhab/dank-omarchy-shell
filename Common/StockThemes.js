@@ -2,99 +2,101 @@
 // Separated from Theme.qml to keep that file clean
 
 const CatppuccinMocha = {
-    surface: "#45475a",
+    surface: "#313244",
     surfaceText: "#cdd6f4",
-    surfaceVariant: "#45475a",
+    surfaceVariant: "#313244",
     surfaceVariantText: "#a6adc8",
     background: "#1e1e2e",
     backgroundText: "#cdd6f4",
     outline: "#6c7086",
-    surfaceContainer: "#313244",
-    surfaceContainerHigh: "#585b70"
+    surfaceContainer: "#45475a",
+    surfaceContainerHigh: "#585b70",
+    surfaceContainerHighest: "#6c7086"
 }
 
 const CatppuccinLatte = {
-    surface: "#bcc0cc",
+    surface: "#e6e9ef",
     surfaceText: "#4c4f69",
-    surfaceVariant: "#bcc0cc",
+    surfaceVariant: "#e6e9ef",
     surfaceVariantText: "#6c6f85",
     background: "#eff1f5",
     backgroundText: "#4c4f69",
     outline: "#9ca0b0",
-    surfaceContainer: "#ccd0da",
-    surfaceContainerHigh: "#acb0be"
+    surfaceContainer: "#dce0e8",
+    surfaceContainerHigh: "#ccd0da",
+    surfaceContainerHighest: "#bcc0cc"
 }
 
 const CatppuccinVariants = {
     "cat-rosewater": {
         name: "Rosewater",
-        dark: { primary: "#f5e0dc", secondary: "#f2cdcd", primaryText: "#1e1e2e", primaryContainer: "#8b6b5e", surfaceTint: "#f5e0dc" },
-        light: { primary: "#dc8a78", secondary: "#dd7878", primaryText: "#ffffff", primaryContainer: "#f4d2ca", surfaceTint: "#dc8a78" }
+        dark: { primary: "#f5e0dc", secondary: "#f2cdcd", primaryText: "#1e1e2e", primaryContainer: "#7d5d56", surfaceTint: "#f5e0dc" },
+        light: { primary: "#dc8a78", secondary: "#dd7878", primaryText: "#ffffff", primaryContainer: "#f6e7e3", surfaceTint: "#dc8a78" }
     },
     "cat-flamingo": {
         name: "Flamingo",
-        dark: { primary: "#f2cdcd", secondary: "#f5e0dc", primaryText: "#1e1e2e", primaryContainer: "#885d62", surfaceTint: "#f2cdcd" },
-        light: { primary: "#dd7878", secondary: "#dc8a78", primaryText: "#ffffff", primaryContainer: "#f4caca", surfaceTint: "#dd7878" }
+        dark: { primary: "#f2cdcd", secondary: "#f5e0dc", primaryText: "#1e1e2e", primaryContainer: "#7a555a", surfaceTint: "#f2cdcd" },
+        light: { primary: "#dd7878", secondary: "#dc8a78", primaryText: "#ffffff", primaryContainer: "#f6e5e5", surfaceTint: "#dd7878" }
     },
     "cat-pink": {
         name: "Pink",
-        dark: { primary: "#f5c2e7", secondary: "#cba6f7", primaryText: "#1e1e2e", primaryContainer: "#8b537a", surfaceTint: "#f5c2e7" },
-        light: { primary: "#ea76cb", secondary: "#8839ef", primaryText: "#ffffff", primaryContainer: "#f7c9e7", surfaceTint: "#ea76cb" }
+        dark: { primary: "#f5c2e7", secondary: "#cba6f7", primaryText: "#1e1e2e", primaryContainer: "#7a3f69", surfaceTint: "#f5c2e7" },
+        light: { primary: "#ea76cb", secondary: "#8839ef", primaryText: "#ffffff", primaryContainer: "#f7d7ee", surfaceTint: "#ea76cb" }
     },
     "cat-mauve": {
         name: "Mauve",
-        dark: { primary: "#cba6f7", secondary: "#b4befe", primaryText: "#1e1e2e", primaryContainer: "#61378a", surfaceTint: "#cba6f7" },
-        light: { primary: "#8839ef", secondary: "#7287fd", primaryText: "#ffffff", primaryContainer: "#e4d3ff", surfaceTint: "#8839ef" }
+        dark: { primary: "#cba6f7", secondary: "#b4befe", primaryText: "#1e1e2e", primaryContainer: "#55307f", surfaceTint: "#cba6f7" },
+        light: { primary: "#8839ef", secondary: "#7287fd", primaryText: "#ffffff", primaryContainer: "#eadcff", surfaceTint: "#8839ef" }
     },
     "cat-red": {
         name: "Red",
-        dark: { primary: "#f38ba8", secondary: "#eba0ac", primaryText: "#1e1e2e", primaryContainer: "#891c3b", surfaceTint: "#f38ba8" },
-        light: { primary: "#d20f39", secondary: "#e64553", primaryText: "#ffffff", primaryContainer: "#f1b8c4", surfaceTint: "#d20f39" }
+        dark: { primary: "#f38ba8", secondary: "#eba0ac", primaryText: "#1e1e2e", primaryContainer: "#6f2438", surfaceTint: "#f38ba8" },
+        light: { primary: "#d20f39", secondary: "#e64553", primaryText: "#ffffff", primaryContainer: "#f6d0d6", surfaceTint: "#d20f39" }
     },
     "cat-maroon": {
         name: "Maroon",
-        dark: { primary: "#eba0ac", secondary: "#f38ba8", primaryText: "#1e1e2e", primaryContainer: "#81313f", surfaceTint: "#eba0ac" },
-        light: { primary: "#e64553", secondary: "#d20f39", primaryText: "#ffffff", primaryContainer: "#f4c3c8", surfaceTint: "#e64553" }
+        dark: { primary: "#eba0ac", secondary: "#f38ba8", primaryText: "#1e1e2e", primaryContainer: "#6d3641", surfaceTint: "#eba0ac" },
+        light: { primary: "#e64553", secondary: "#d20f39", primaryText: "#ffffff", primaryContainer: "#f7d8dc", surfaceTint: "#e64553" }
     },
     "cat-peach": {
         name: "Peach",
-        dark: { primary: "#fab387", secondary: "#f9e2af", primaryText: "#1e1e2e", primaryContainer: "#90441a", surfaceTint: "#fab387" },
-        light: { primary: "#fe640b", secondary: "#df8e1d", primaryText: "#ffffff", primaryContainer: "#ffddcc", surfaceTint: "#fe640b" }
+        dark: { primary: "#fab387", secondary: "#f9e2af", primaryText: "#1e1e2e", primaryContainer: "#734226", surfaceTint: "#fab387" },
+        light: { primary: "#fe640b", secondary: "#df8e1d", primaryText: "#ffffff", primaryContainer: "#ffe4d5", surfaceTint: "#fe640b" }
     },
     "cat-yellow": {
         name: "Yellow",
-        dark: { primary: "#f9e2af", secondary: "#a6e3a1", primaryText: "#1e1e2e", primaryContainer: "#8f7342", surfaceTint: "#f9e2af" },
-        light: { primary: "#df8e1d", secondary: "#40a02b", primaryText: "#ffffff", primaryContainer: "#fff3cc", surfaceTint: "#df8e1d" }
+        dark: { primary: "#f9e2af", secondary: "#a6e3a1", primaryText: "#1e1e2e", primaryContainer: "#6e5a2f", surfaceTint: "#f9e2af" },
+        light: { primary: "#df8e1d", secondary: "#40a02b", primaryText: "#ffffff", primaryContainer: "#fff6d6", surfaceTint: "#df8e1d" }
     },
     "cat-green": {
         name: "Green",
-        dark: { primary: "#a6e3a1", secondary: "#94e2d5", primaryText: "#1e1e2e", primaryContainer: "#3c7534", surfaceTint: "#a6e3a1" },
-        light: { primary: "#40a02b", secondary: "#179299", primaryText: "#ffffff", primaryContainer: "#d4f5d4", surfaceTint: "#40a02b" }
+        dark: { primary: "#a6e3a1", secondary: "#94e2d5", primaryText: "#1e1e2e", primaryContainer: "#2f5f36", surfaceTint: "#a6e3a1" },
+        light: { primary: "#40a02b", secondary: "#179299", primaryText: "#ffffff", primaryContainer: "#dff4e0", surfaceTint: "#40a02b" }
     },
     "cat-teal": {
         name: "Teal",
-        dark: { primary: "#94e2d5", secondary: "#89dceb", primaryText: "#1e1e2e", primaryContainer: "#2a7468", surfaceTint: "#94e2d5" },
-        light: { primary: "#179299", secondary: "#04a5e5", primaryText: "#ffffff", primaryContainer: "#ccf2f2", surfaceTint: "#179299" }
+        dark: { primary: "#94e2d5", secondary: "#89dceb", primaryText: "#1e1e2e", primaryContainer: "#2e5e59", surfaceTint: "#94e2d5" },
+        light: { primary: "#179299", secondary: "#04a5e5", primaryText: "#ffffff", primaryContainer: "#daf3f1", surfaceTint: "#179299" }
     },
     "cat-sky": {
         name: "Sky",
-        dark: { primary: "#89dceb", secondary: "#74c7ec", primaryText: "#1e1e2e", primaryContainer: "#196e7e", surfaceTint: "#89dceb" },
-        light: { primary: "#04a5e5", secondary: "#209fb5", primaryText: "#ffffff", primaryContainer: "#ccebff", surfaceTint: "#04a5e5" }
+        dark: { primary: "#89dceb", secondary: "#74c7ec", primaryText: "#1e1e2e", primaryContainer: "#24586a", surfaceTint: "#89dceb" },
+        light: { primary: "#04a5e5", secondary: "#209fb5", primaryText: "#ffffff", primaryContainer: "#dbf1fb", surfaceTint: "#04a5e5" }
     },
     "cat-sapphire": {
         name: "Sapphire",
-        dark: { primary: "#74c7ec", secondary: "#89b4fa", primaryText: "#1e1e2e", primaryContainer: "#0a597f", surfaceTint: "#74c7ec" },
-        light: { primary: "#209fb5", secondary: "#1e66f5", primaryText: "#ffffff", primaryContainer: "#d0f0f5", surfaceTint: "#209fb5" }
+        dark: { primary: "#74c7ec", secondary: "#89b4fa", primaryText: "#1e1e2e", primaryContainer: "#1f4d6f", surfaceTint: "#74c7ec" },
+        light: { primary: "#209fb5", secondary: "#1e66f5", primaryText: "#ffffff", primaryContainer: "#def3f8", surfaceTint: "#209fb5" }
     },
     "cat-blue": {
         name: "Blue",
-        dark: { primary: "#89b4fa", secondary: "#b4befe", primaryText: "#1e1e2e", primaryContainer: "#19468d", surfaceTint: "#89b4fa" },
-        light: { primary: "#1e66f5", secondary: "#7287fd", primaryText: "#ffffff", primaryContainer: "#ccd9ff", surfaceTint: "#1e66f5" }
+        dark: { primary: "#89b4fa", secondary: "#b4befe", primaryText: "#1e1e2e", primaryContainer: "#243f75", surfaceTint: "#89b4fa" },
+        light: { primary: "#1e66f5", secondary: "#7287fd", primaryText: "#ffffff", primaryContainer: "#e0e9ff", surfaceTint: "#1e66f5" }
     },
     "cat-lavender": {
         name: "Lavender",
-        dark: { primary: "#b4befe", secondary: "#cba6f7", primaryText: "#1e1e2e", primaryContainer: "#4a5091", surfaceTint: "#b4befe" },
-        light: { primary: "#7287fd", secondary: "#8839ef", primaryText: "#ffffff", primaryContainer: "#dde1ff", surfaceTint: "#7287fd" }
+        dark: { primary: "#b4befe", secondary: "#cba6f7", primaryText: "#1e1e2e", primaryContainer: "#3f4481", surfaceTint: "#b4befe" },
+        light: { primary: "#7287fd", secondary: "#8839ef", primaryText: "#ffffff", primaryContainer: "#e5e8ff", surfaceTint: "#7287fd" }
     }
 }
 
@@ -118,16 +120,17 @@ const StockThemes = {
             primaryText: "#000000",
             primaryContainer: "#0d47a1",
             secondary: "#8ab4f8",
-            surface: "#1a1c1e",
-            surfaceText: "#e3e8ef",
-            surfaceVariant: "#44464f",
-            surfaceVariantText: "#c4c7c5",
+            surface: "#101418",
+            surfaceText: "#e0e2e8",
+            surfaceVariant: "#42474e",
+            surfaceVariantText: "#c2c7cf",
             surfaceTint: "#8ab4f8",
-            background: "#1a1c1e",
-            backgroundText: "#e3e8ef",
-            outline: "#8e918f",
-            surfaceContainer: "#1e2023",
-            surfaceContainerHigh: "#292b2f"
+            background: "#101418",
+            backgroundText: "#e0e2e8",
+            outline: "#8c9199",
+            surfaceContainer: "#1d2024",
+            surfaceContainerHigh: "#272a2f",
+            surfaceContainerHighest: "#32353a"
         },
         purple: {
             name: "Purple",
@@ -135,16 +138,17 @@ const StockThemes = {
             primaryText: "#381E72",
             primaryContainer: "#4F378B",
             secondary: "#CCC2DC",
-            surface: "#10121E",
-            surfaceText: "#E6E0E9",
-            surfaceVariant: "#49454F",
-            surfaceVariantText: "#CAC4D0",
+            surface: "#141218",
+            surfaceText: "#e6e0e9",
+            surfaceVariant: "#49454e",
+            surfaceVariantText: "#cac4cf",
             surfaceTint: "#D0BCFF",
-            background: "#10121E",
-            backgroundText: "#E6E0E9",
-            outline: "#938F99",
-            surfaceContainer: "#1D1B20",
-            surfaceContainerHigh: "#2B2930"
+            background: "#141218",
+            backgroundText: "#e6e0e9",
+            outline: "#948f99",
+            surfaceContainer: "#211f24",
+            surfaceContainerHigh: "#2b292f",
+            surfaceContainerHighest: "#36343a"
         },
         green: {
             name: "Green",
@@ -152,16 +156,17 @@ const StockThemes = {
             primaryText: "#000000",
             primaryContainer: "#1b5e20",
             secondary: "#81c995",
-            surface: "#0f1411",
-            surfaceText: "#e1f5e3",
-            surfaceVariant: "#404943",
-            surfaceVariantText: "#c1cbc4",
+            surface: "#10140f",
+            surfaceText: "#e0e4db",
+            surfaceVariant: "#424940",
+            surfaceVariantText: "#c2c9bd",
             surfaceTint: "#81c995",
-            background: "#0f1411",
-            backgroundText: "#e1f5e3",
-            outline: "#8b938c",
-            surfaceContainer: "#1a1f1b",
-            surfaceContainerHigh: "#252a26"
+            background: "#10140f",
+            backgroundText: "#e0e4db",
+            outline: "#8c9388",
+            surfaceContainer: "#1d211b",
+            surfaceContainerHigh: "#272b25",
+            surfaceContainerHighest: "#323630"
         },
         orange: {
             name: "Orange",
@@ -169,16 +174,17 @@ const StockThemes = {
             primaryText: "#000000",
             primaryContainer: "#3e2723",
             secondary: "#ffb74d",
-            surface: "#1c1410",
-            surfaceText: "#f5f1ea",
-            surfaceVariant: "#4a453a",
-            surfaceVariantText: "#cbc5b8",
+            surface: "#1a120e",
+            surfaceText: "#f0dfd8",
+            surfaceVariant: "#52443d",
+            surfaceVariantText: "#d7c2b9",
             surfaceTint: "#ffb74d",
-            background: "#1c1410",
-            backgroundText: "#f5f1ea",
-            outline: "#958f84",
-            surfaceContainer: "#211e17",
-            surfaceContainerHigh: "#2c291f"
+            background: "#1a120e",
+            backgroundText: "#f0dfd8",
+            outline: "#a08d85",
+            surfaceContainer: "#271e1a",
+            surfaceContainerHigh: "#322824",
+            surfaceContainerHighest: "#3d332e"
         },
         red: {
             name: "Red",
@@ -186,16 +192,17 @@ const StockThemes = {
             primaryText: "#000000",
             primaryContainer: "#4a0e0e",
             secondary: "#f28b82",
-            surface: "#1c1011",
-            surfaceText: "#f5e8ea",
-            surfaceVariant: "#4a3f41",
-            surfaceVariantText: "#cbc2c4",
+            surface: "#1a1110",
+            surfaceText: "#f1dedc",
+            surfaceVariant: "#534341",
+            surfaceVariantText: "#d8c2be",
             surfaceTint: "#f28b82",
-            background: "#1c1011",
-            backgroundText: "#f5e8ea",
-            outline: "#958b8d",
-            surfaceContainer: "#211b1c",
-            surfaceContainerHigh: "#2c2426"
+            background: "#1a1110",
+            backgroundText: "#f1dedc",
+            outline: "#a08c89",
+            surfaceContainer: "#271d1c",
+            surfaceContainerHigh: "#322826",
+            surfaceContainerHighest: "#3d3231"
         },
         cyan: {
             name: "Cyan",
@@ -203,16 +210,17 @@ const StockThemes = {
             primaryText: "#000000",
             primaryContainer: "#004d5c",
             secondary: "#4dd0e1",
-            surface: "#0f1617",
-            surfaceText: "#e8f4f5",
-            surfaceVariant: "#3f474a",
-            surfaceVariantText: "#c2c9cb",
+            surface: "#0e1416",
+            surfaceText: "#dee3e5",
+            surfaceVariant: "#3f484a",
+            surfaceVariantText: "#bfc8ca",
             surfaceTint: "#4dd0e1",
-            background: "#0f1617",
-            backgroundText: "#e8f4f5",
-            outline: "#8c9194",
-            surfaceContainer: "#1a1f20",
-            surfaceContainerHigh: "#252b2c"
+            background: "#0e1416",
+            backgroundText: "#dee3e5",
+            outline: "#899295",
+            surfaceContainer: "#1b2122",
+            surfaceContainerHigh: "#252b2c",
+            surfaceContainerHighest: "#303637"
         },
         pink: {
             name: "Pink",
@@ -220,16 +228,17 @@ const StockThemes = {
             primaryText: "#000000",
             primaryContainer: "#4a0e2f",
             secondary: "#f8bbd9",
-            surface: "#1a1014",
-            surfaceText: "#f3e8ee",
-            surfaceVariant: "#483f45",
-            surfaceVariantText: "#c9c2c7",
+            surface: "#191112",
+            surfaceText: "#f0dee0",
+            surfaceVariant: "#524345",
+            surfaceVariantText: "#d6c2c3",
             surfaceTint: "#f8bbd9",
-            background: "#1a1014",
-            backgroundText: "#f3e8ee",
-            outline: "#938a90",
-            surfaceContainer: "#1f1b1e",
-            surfaceContainerHigh: "#2a2428"
+            background: "#191112",
+            backgroundText: "#f0dee0",
+            outline: "#9f8c8e",
+            surfaceContainer: "#261d1e",
+            surfaceContainerHigh: "#312829",
+            surfaceContainerHighest: "#3c3233"
         },
         amber: {
             name: "Amber",
@@ -237,16 +246,17 @@ const StockThemes = {
             primaryText: "#000000",
             primaryContainer: "#4a3c00",
             secondary: "#ffd54f",
-            surface: "#1a1710",
-            surfaceText: "#f3f0e8",
-            surfaceVariant: "#49453a",
-            surfaceVariantText: "#cac5b8",
+            surface: "#17130b",
+            surfaceText: "#ebe1d4",
+            surfaceVariant: "#4d4639",
+            surfaceVariantText: "#d0c5b4",
             surfaceTint: "#ffd54f",
-            background: "#1a1710",
-            backgroundText: "#f3f0e8",
-            outline: "#949084",
-            surfaceContainer: "#1f1e17",
-            surfaceContainerHigh: "#2a281f"
+            background: "#17130b",
+            backgroundText: "#ebe1d4",
+            outline: "#998f80",
+            surfaceContainer: "#231f17",
+            surfaceContainerHigh: "#2e2921",
+            surfaceContainerHighest: "#39342b"
         },
         coral: {
             name: "Coral",
@@ -255,15 +265,16 @@ const StockThemes = {
             primaryContainer: "#8c1d18",
             secondary: "#f9dedc",
             surface: "#1a1110",
-            surfaceText: "#f1e8e7",
-            surfaceVariant: "#4a4142",
-            surfaceVariantText: "#cdc2c1",
+            surfaceText: "#f1dedc",
+            surfaceVariant: "#534341",
+            surfaceVariantText: "#d8c2bf",
             surfaceTint: "#ffb4ab",
             background: "#1a1110",
-            backgroundText: "#f1e8e7",
-            outline: "#968b8a",
-            surfaceContainer: "#201a19",
-            surfaceContainerHigh: "#2b2221"
+            backgroundText: "#f1dedc",
+            outline: "#a08c8a",
+            surfaceContainer: "#271d1c",
+            surfaceContainerHigh: "#322826",
+            surfaceContainerHighest: "#3d3231"
         },
         monochrome: {
             name: "Monochrome",
@@ -281,6 +292,7 @@ const StockThemes = {
             outline: "#929092",
             surfaceContainer: "#2a2a2a",
             surfaceContainerHigh: "#2a2a2b",
+            surfaceContainerHighest: "#353535",
             error: "#ffb4ab",
             warning: "#3f4759",
             info: "#595e6c",
@@ -294,16 +306,17 @@ const StockThemes = {
             primaryText: "#ffffff",
             primaryContainer: "#e3f2fd",
             secondary: "#42a5f5",
-            surface: "#fefefe",
-            surfaceText: "#1a1c1e",
-            surfaceVariant: "#e7e0ec",
-            surfaceVariantText: "#49454f",
+            surface: "#f7f9ff",
+            surfaceText: "#181c20",
+            surfaceVariant: "#dee3eb",
+            surfaceVariantText: "#42474e",
             surfaceTint: "#1976d2",
-            background: "#fefefe",
-            backgroundText: "#1a1c1e",
-            outline: "#79747e",
-            surfaceContainer: "#f3f3f3",
-            surfaceContainerHigh: "#ececec"
+            background: "#f7f9ff",
+            backgroundText: "#181c20",
+            outline: "#72777f",
+            surfaceContainer: "#eceef4",
+            surfaceContainerHigh: "#e6e8ee",
+            surfaceContainerHighest: "#e0e2e8"
         },
         purple: {
             name: "Purple Light",
@@ -311,16 +324,17 @@ const StockThemes = {
             primaryText: "#ffffff",
             primaryContainer: "#EADDFF",
             secondary: "#625B71",
-            surface: "#FFFBFE",
-            surfaceText: "#1C1B1F",
-            surfaceVariant: "#E7E0EC",
-            surfaceVariantText: "#49454F",
+            surface: "#fef7ff",
+            surfaceText: "#1d1b20",
+            surfaceVariant: "#e7e0eb",
+            surfaceVariantText: "#49454e",
             surfaceTint: "#6750A4",
-            background: "#FFFBFE",
-            backgroundText: "#1C1B1F",
-            outline: "#79747E",
-            surfaceContainer: "#F3EDF7",
-            surfaceContainerHigh: "#ECE6F0"
+            background: "#fef7ff",
+            backgroundText: "#1d1b20",
+            outline: "#7a757f",
+            surfaceContainer: "#f2ecf4",
+            surfaceContainerHigh: "#ece6ee",
+            surfaceContainerHighest: "#e6e0e9"
         },
         green: {
             name: "Green Light",
@@ -328,16 +342,17 @@ const StockThemes = {
             primaryText: "#ffffff",
             primaryContainer: "#e8f5e8",
             secondary: "#4caf50",
-            surface: "#fefefe",
-            surfaceText: "#1a1c1e",
-            surfaceVariant: "#e7e0ec",
-            surfaceVariantText: "#49454f",
+            surface: "#f7fbf1",
+            surfaceText: "#191d17",
+            surfaceVariant: "#dee5d8",
+            surfaceVariantText: "#424940",
             surfaceTint: "#2e7d32",
-            background: "#fefefe",
-            backgroundText: "#1a1c1e",
-            outline: "#79747e",
-            surfaceContainer: "#f3f3f3",
-            surfaceContainerHigh: "#ececec"
+            background: "#f7fbf1",
+            backgroundText: "#191d17",
+            outline: "#72796f",
+            surfaceContainer: "#ecefe6",
+            surfaceContainerHigh: "#e6e9e0",
+            surfaceContainerHighest: "#e0e4db"
         },
         orange: {
             name: "Orange Light",
@@ -345,16 +360,17 @@ const StockThemes = {
             primaryText: "#ffffff",
             primaryContainer: "#ffecb3",
             secondary: "#ff9800",
-            surface: "#fefefe",
-            surfaceText: "#1a1c1e",
-            surfaceVariant: "#e7e0ec",
-            surfaceVariantText: "#49454f",
+            surface: "#fff8f6",
+            surfaceText: "#221a16",
+            surfaceVariant: "#f4ded5",
+            surfaceVariantText: "#52443d",
             surfaceTint: "#e65100",
-            background: "#fefefe",
-            backgroundText: "#1a1c1e",
-            outline: "#79747e",
-            surfaceContainer: "#f3f3f3",
-            surfaceContainerHigh: "#ececec"
+            background: "#fff8f6",
+            backgroundText: "#221a16",
+            outline: "#85736c",
+            surfaceContainer: "#fceae3",
+            surfaceContainerHigh: "#f6e5de",
+            surfaceContainerHighest: "#f0dfd8"
         },
         red: {
             name: "Red Light",
@@ -362,16 +378,17 @@ const StockThemes = {
             primaryText: "#ffffff",
             primaryContainer: "#ffebee",
             secondary: "#f44336",
-            surface: "#fefefe",
-            surfaceText: "#1a1c1e",
-            surfaceVariant: "#e7e0ec",
-            surfaceVariantText: "#49454f",
+            surface: "#fff8f7",
+            surfaceText: "#231918",
+            surfaceVariant: "#f5ddda",
+            surfaceVariantText: "#534341",
             surfaceTint: "#d32f2f",
-            background: "#fefefe",
-            backgroundText: "#1a1c1e",
-            outline: "#79747e",
-            surfaceContainer: "#f3f3f3",
-            surfaceContainerHigh: "#ececec"
+            background: "#fff8f7",
+            backgroundText: "#231918",
+            outline: "#857370",
+            surfaceContainer: "#fceae7",
+            surfaceContainerHigh: "#f7e4e1",
+            surfaceContainerHighest: "#f1dedc"
         },
         cyan: {
             name: "Cyan Light",
@@ -379,16 +396,17 @@ const StockThemes = {
             primaryText: "#ffffff",
             primaryContainer: "#e0f2f1",
             secondary: "#00bcd4",
-            surface: "#fefefe",
-            surfaceText: "#1a1c1e",
-            surfaceVariant: "#e7e0ec",
-            surfaceVariantText: "#49454f",
+            surface: "#f5fafc",
+            surfaceText: "#171d1e",
+            surfaceVariant: "#dbe4e6",
+            surfaceVariantText: "#3f484a",
             surfaceTint: "#0097a7",
-            background: "#fefefe",
-            backgroundText: "#1a1c1e",
-            outline: "#79747e",
-            surfaceContainer: "#f3f3f3",
-            surfaceContainerHigh: "#ececec"
+            background: "#f5fafc",
+            backgroundText: "#171d1e",
+            outline: "#6f797b",
+            surfaceContainer: "#e9eff0",
+            surfaceContainerHigh: "#e3e9eb",
+            surfaceContainerHighest: "#dee3e5"
         },
         pink: {
             name: "Pink Light",
@@ -396,16 +414,17 @@ const StockThemes = {
             primaryText: "#ffffff",
             primaryContainer: "#fce4ec",
             secondary: "#e91e63",
-            surface: "#fefefe",
-            surfaceText: "#1a1c1e",
-            surfaceVariant: "#e7e0ec",
-            surfaceVariantText: "#49454f",
+            surface: "#fff8f7",
+            surfaceText: "#22191a",
+            surfaceVariant: "#f3dddf",
+            surfaceVariantText: "#524345",
             surfaceTint: "#c2185b",
-            background: "#fefefe",
-            backgroundText: "#1a1c1e",
-            outline: "#79747e",
-            surfaceContainer: "#f3f3f3",
-            surfaceContainerHigh: "#ececec"
+            background: "#fff8f7",
+            backgroundText: "#22191a",
+            outline: "#847375",
+            surfaceContainer: "#fbeaeb",
+            surfaceContainerHigh: "#f5e4e5",
+            surfaceContainerHighest: "#f0dee0"
         },
         amber: {
             name: "Amber Light",
@@ -413,16 +432,17 @@ const StockThemes = {
             primaryText: "#000000",
             primaryContainer: "#fff8e1",
             secondary: "#ffc107",
-            surface: "#fefefe",
-            surfaceText: "#1a1c1e",
-            surfaceVariant: "#e7e0ec",
-            surfaceVariantText: "#49454f",
+            surface: "#fff8f2",
+            surfaceText: "#1f1b13",
+            surfaceVariant: "#ede1cf",
+            surfaceVariantText: "#4d4639",
             surfaceTint: "#ff8f00",
-            background: "#fefefe",
-            backgroundText: "#1a1c1e",
-            outline: "#79747e",
-            surfaceContainer: "#f3f3f3",
-            surfaceContainerHigh: "#ececec"
+            background: "#fff8f2",
+            backgroundText: "#1f1b13",
+            outline: "#7f7667",
+            surfaceContainer: "#f6ecdf",
+            surfaceContainerHigh: "#f1e7d9",
+            surfaceContainerHighest: "#ebe1d4"
         },
         coral: {
             name: "Coral Light",
@@ -430,16 +450,17 @@ const StockThemes = {
             primaryText: "#ffffff",
             primaryContainer: "#ffdad6",
             secondary: "#ff5449",
-            surface: "#fefefe",
-            surfaceText: "#1a1c1e",
-            surfaceVariant: "#e7e0ec",
-            surfaceVariantText: "#49454f",
+            surface: "#fff8f7",
+            surfaceText: "#231918",
+            surfaceVariant: "#f5ddda",
+            surfaceVariantText: "#534341",
             surfaceTint: "#8c1d18",
-            background: "#fefefe",
-            backgroundText: "#1a1c1e",
-            outline: "#79747e",
-            surfaceContainer: "#f3f3f3",
-            surfaceContainerHigh: "#ececec"
+            background: "#fff8f7",
+            backgroundText: "#231918",
+            outline: "#857371",
+            surfaceContainer: "#fceae7",
+            surfaceContainerHigh: "#f6e4e2",
+            surfaceContainerHighest: "#f1dedc"
         },
         monochrome: {
             name: "Monochrome Light",

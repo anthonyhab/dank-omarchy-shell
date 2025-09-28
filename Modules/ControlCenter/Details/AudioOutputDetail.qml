@@ -7,11 +7,16 @@ import qs.Services
 import qs.Widgets
 
 Rectangle {
-    implicitHeight: headerRow.height + audioContent.height + Theme.spacingM
+    property bool hasVolumeSliderInCC: {
+        const widgets = SettingsData.controlCenterWidgets || []
+        return widgets.some(widget => widget.id === "volumeSlider")
+    }
+
+    implicitHeight: headerRow.height + (!hasVolumeSliderInCC ? volumeSlider.height : 0) + audioContent.height + Theme.spacingM
     radius: Theme.cornerRadius
-    color: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, Theme.getContentBackgroundAlpha() * 0.6)
+    color: Theme.surfaceContainerHigh
     border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.08)
-    border.width: 1
+    border.width: 0
     
     Row {
         id: headerRow
@@ -32,15 +37,88 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
         }
     }
-    
+
+    Row {
+        id: volumeSlider
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: headerRow.bottom
+        anchors.leftMargin: Theme.spacingM
+        anchors.rightMargin: Theme.spacingM
+        anchors.topMargin: Theme.spacingXS
+        height: 35
+        spacing: 0
+        visible: !hasVolumeSliderInCC
+
+        Rectangle {
+            width: Theme.iconSize + Theme.spacingS * 2
+            height: Theme.iconSize + Theme.spacingS * 2
+            anchors.verticalCenter: parent.verticalCenter
+            radius: (Theme.iconSize + Theme.spacingS * 2) / 2
+            color: iconArea.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.12) : "transparent"
+
+            MouseArea {
+                id: iconArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (AudioService.sink && AudioService.sink.audio) {
+                        AudioService.sink.audio.muted = !AudioService.sink.audio.muted
+                    }
+                }
+            }
+
+            DankIcon {
+                anchors.centerIn: parent
+                name: {
+                    if (!AudioService.sink || !AudioService.sink.audio) return "volume_off"
+                    let muted = AudioService.sink.audio.muted
+                    let volume = AudioService.sink.audio.volume
+                    if (muted || volume === 0.0) return "volume_off"
+                    if (volume <= 0.33) return "volume_down"
+                    if (volume <= 0.66) return "volume_up"
+                    return "volume_up"
+                }
+                size: Theme.iconSize
+                color: AudioService.sink && AudioService.sink.audio && !AudioService.sink.audio.muted && AudioService.sink.audio.volume > 0 ? Theme.primary : Theme.surfaceText
+            }
+        }
+
+        DankSlider {
+            readonly property real actualVolumePercent: AudioService.sink && AudioService.sink.audio ? Math.round(AudioService.sink.audio.volume * 100) : 0
+
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - (Theme.iconSize + Theme.spacingS * 2)
+            enabled: AudioService.sink && AudioService.sink.audio
+            minimum: 0
+            maximum: 100
+            value: AudioService.sink && AudioService.sink.audio ? Math.min(100, Math.round(AudioService.sink.audio.volume * 100)) : 0
+            showValue: true
+            unit: "%"
+            valueOverride: actualVolumePercent
+            thumbOutlineColor: Theme.surfaceVariant
+
+            onSliderValueChanged: function(newValue) {
+                if (AudioService.sink && AudioService.sink.audio) {
+                    AudioService.sink.audio.volume = newValue / 100
+                    if (newValue > 0 && AudioService.sink.audio.muted) {
+                        AudioService.sink.audio.muted = false
+                    }
+                    AudioService.volumeChanged()
+                }
+            }
+        }
+    }
+
     DankFlickable {
         id: audioContent
-        anchors.top: headerRow.bottom
+        anchors.top: volumeSlider.visible ? volumeSlider.bottom : headerRow.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: Theme.spacingM
-        anchors.topMargin: Theme.spacingM
+        anchors.topMargin: volumeSlider.visible ? Theme.spacingS : Theme.spacingM
         contentHeight: audioColumn.height
         clip: true
         
@@ -61,9 +139,9 @@ Rectangle {
                     width: parent.width
                     height: 50
                     radius: Theme.cornerRadius
-                    color: deviceMouseArea.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.08) : Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, index % 2 === 0 ? 0.3 : 0.2)
+                    color: deviceMouseArea.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.08) : Theme.surfaceContainerHighest
                     border.color: modelData === AudioService.sink ? Theme.primary : Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.12)
-                    border.width: modelData === AudioService.sink ? 2 : 1
+                    border.width: 0
                     
                     Row {
                         anchors.left: parent.left
@@ -122,14 +200,6 @@ Rectangle {
                                 Pipewire.preferredDefaultAudioSink = modelData
                             }
                         }
-                    }
-                    
-                    Behavior on color {
-                        ColorAnimation { duration: Theme.shortDuration }
-                    }
-                    
-                    Behavior on border.color {
-                        ColorAnimation { duration: Theme.shortDuration }
                     }
                 }
             }

@@ -1,0 +1,3 @@
+[templates.dank]
+input_path = './matugen/templates/dank.json'
+output_path = '~/.cache/quickshell/dankshell/dms-colors.json'

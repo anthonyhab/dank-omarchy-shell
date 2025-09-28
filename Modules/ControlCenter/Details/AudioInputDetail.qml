@@ -7,11 +7,16 @@ import qs.Services
 import qs.Widgets
 
 Rectangle {
-    implicitHeight: headerRow.height + volumeSlider.height + audioContent.height + Theme.spacingM
+    property bool hasInputVolumeSliderInCC: {
+        const widgets = SettingsData.controlCenterWidgets || []
+        return widgets.some(widget => widget.id === "inputVolumeSlider")
+    }
+
+    implicitHeight: headerRow.height + (hasInputVolumeSliderInCC ? 0 : volumeSlider.height) + audioContent.height + Theme.spacingM
     radius: Theme.cornerRadius
-    color: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, Theme.getContentBackgroundAlpha() * 0.6)
+    color: Theme.surfaceContainerHigh
     border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.08)
-    border.width: 1
+    border.width: 0
     
     Row {
         id: headerRow
@@ -43,6 +48,7 @@ Rectangle {
         anchors.topMargin: Theme.spacingXS
         height: 35
         spacing: 0
+        visible: !hasInputVolumeSliderInCC
 
         Rectangle {
             width: Theme.iconSize + Theme.spacingS * 2
@@ -50,10 +56,6 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             radius: (Theme.iconSize + Theme.spacingS * 2) / 2
             color: iconArea.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.12) : "transparent"
-
-            Behavior on color {
-                ColorAnimation { duration: Theme.shortDuration }
-            }
 
             MouseArea {
                 id: iconArea
@@ -106,12 +108,12 @@ Rectangle {
     
     DankFlickable {
         id: audioContent
-        anchors.top: volumeSlider.bottom
+        anchors.top: hasInputVolumeSliderInCC ? headerRow.bottom : volumeSlider.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: Theme.spacingM
-        anchors.topMargin: Theme.spacingS
+        anchors.topMargin: hasInputVolumeSliderInCC ? Theme.spacingM : Theme.spacingS
         contentHeight: audioColumn.height
         clip: true
         
@@ -132,9 +134,9 @@ Rectangle {
                     width: parent.width
                     height: 50
                     radius: Theme.cornerRadius
-                    color: deviceMouseArea.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.08) : Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, index % 2 === 0 ? 0.3 : 0.2)
+                    color: deviceMouseArea.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.08) : Theme.surfaceContainerHighest
                     border.color: modelData === AudioService.source ? Theme.primary : Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.12)
-                    border.width: modelData === AudioService.source ? 2 : 1
+                    border.width: 0
                     
                     Row {
                         anchors.left: parent.left
@@ -191,14 +193,6 @@ Rectangle {
                                 Pipewire.preferredDefaultAudioSource = modelData
                             }
                         }
-                    }
-                    
-                    Behavior on color {
-                        ColorAnimation { duration: Theme.shortDuration }
-                    }
-                    
-                    Behavior on border.color {
-                        ColorAnimation { duration: Theme.shortDuration }
                     }
                 }
             }

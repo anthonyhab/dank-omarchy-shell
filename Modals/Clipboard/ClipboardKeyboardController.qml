@@ -53,7 +53,7 @@ QtObject {
                 modal.hide()
                 event.accepted = true
             }
-        } else if (event.key === Qt.Key_Down) {
+        } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Tab) {
             if (!modal.keyboardNavigationActive) {
                 modal.keyboardNavigationActive = true
                 modal.selectedIndex = 0
@@ -62,7 +62,7 @@ QtObject {
                 selectNext()
                 event.accepted = true
             }
-        } else if (event.key === Qt.Key_Up) {
+        } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Backtab) {
             if (!modal.keyboardNavigationActive) {
                 modal.keyboardNavigationActive = true
                 modal.selectedIndex = 0

@@ -459,6 +459,21 @@ Power menu modal control for system power actions.
 - `close` - Hide power menu modal
 - `toggle` - Toggle power menu modal visibility
 
+### Target: `control-center`
+Control Center popout containing network, bluetooth, audio, power, and other quick settings.
+
+**Functions:**
+- `open` - Show the control center
+- `close` - Hide the control center
+- `toggle` - Toggle control center visibility
+
+**Examples**
+```bash
+dms ipc call control-center toggle
+dms ipc call control-center open
+dms ipc call control-center close
+```
+
 ### Target: `notepad`
 Notepad/scratchpad modal control for quick note-taking.
 

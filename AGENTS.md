@@ -12,8 +12,9 @@ DankMaterialShell centers on modular Quickshell components. `shell.qml` orchestr
 ## Coding Style & Naming Conventions
 Use four-space indentation (see `alejandra.toml`). Format QML with `qmlfmt -t 4 -i 4 -b 250 -w file.qml` or `./qmlformat-all.sh`, which also repairs `pragma ComponentBehavior`. Prefer PascalCase for QML types, camelCase for ids/properties, and SCREAMING_SNAKE_CASE only for constants. Keep shared logic in `Common/` JS helpers instead of duplicating inline functions, and split large modules rather than growing monoliths.
 
-## Testing Guidelines
-There is no automated suite yet, so rely on scenario scripts: `./verify-notifications.sh` exercises rich notification flows, while `./spam-notifications.sh` stress-tests grouping and performance. After launching with Quickshell, confirm IPC paths (`dms ipc spotlight toggle`) and compositor bindings on both niri and Hyprland. For theming changes, run `matugen --config matugen-config.toml apply` and check GTK/Qt synchronization before publishing.
+## Reference documentation
+When creating complex components or when knowledge about how to implement something is needed don't be afraid to copy ideas from these repositories:
 
-## Commit & Pull Request Guidelines
-Commit subjects follow the imperative tone seen in history ("Modularize the Notepad", "Add lock before suspend option"); keep the first line under ~72 characters. Document behavioural changes, affected modules, and any new scripts in the body. Pull requests must include clear descriptions, linked issues when applicable, and screenshots or short clips for UI updates (see `CONTRIBUTING.md`). Note required external dependencies or compositor configuration so reviewers can reproduce results.
+End4 Illogical Impulse`https://github.com/end-4/dots-hyprland/tree/main/.config/quickshell/ii`
+Marble Shell `https://github.com/Aylur/marble-shell`
+Hyprland Hyprperks

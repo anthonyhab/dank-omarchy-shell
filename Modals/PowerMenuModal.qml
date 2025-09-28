@@ -57,13 +57,11 @@ DankModal {
     modalFocusScope.Keys.onPressed: (event) => {
         switch (event.key) {
         case Qt.Key_Up:
+        case Qt.Key_Backtab:
             selectedIndex = (selectedIndex - 1 + optionCount) % optionCount;
             event.accepted = true;
             break;
         case Qt.Key_Down:
-            selectedIndex = (selectedIndex + 1) % optionCount;
-            event.accepted = true;
-            break;
         case Qt.Key_Tab:
             selectedIndex = (selectedIndex + 1) % optionCount;
             event.accepted = true;

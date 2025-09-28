@@ -175,6 +175,60 @@ paru -S dms-shell-git
 nix profile install github:AvengeMedia/DankMaterialShell
 ```
 
+#### nixOS - via home-manager
+
+To install using home-manager, you need to add this repo into your flake inputs:
+
+``` nix
+dankMaterialShell = {
+  url = "github:AvengeMedia/DankMaterialShell";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+```
+
+Then somewhere in your home-manager config, add this to the imports:
+
+``` nix
+imports = [
+  inputs.dankMaterialShell.homeModules.dankMaterialShell.default
+];
+```
+
+If you use Niri, the `niri` homeModule provides additional options for Niri integration, such as key bindings and spawn:
+
+``` nix
+imports = [
+  inputs.dankMaterialShell.homeModules.dankMaterialShell.default
+  inputs.dankMaterialShell.homeModules.dankMaterialShell.niri
+];
+```
+
+> [!IMPORTANT]
+> To use the `niri` homeModule, you must have `sobidoo/niri-flake` in your inputs:
+
+``` nix
+niri = {
+  url = "github:sodiboo/niri-flake";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+```
+
+And import it in home-manager:
+
+``` nix
+imports = [
+  inputs.niri.homeModules.niri
+];
+```
+
+Now you can enable it with:
+
+``` nix
+programs.dankMaterialShell.enable = true;
+```
+
+There are a lot of possible configurations that you can enable/disable in the flake, check [nix/default.nix](nix/default.nix) and [nix/niri.nix](nix/niri.nix) to see them all.
+
 #### Other Distributions - via manual installation
 
 **1. Install Quickshell (Varies by Distribution)**
@@ -310,6 +364,9 @@ binds {
    Mod+X hotkey-overlay-title="Power Menu" {
       spawn "dms" "ipc" "call" "powermenu" "toggle";
    }
+   Mod+C hotkey-overlay-title="Control Center" {
+      spawn "dms" "ipc" "call" "control-center" "toggle";
+   }
    XF86AudioRaiseVolume allow-when-locked=true {
       spawn "dms" "ipc" "call" "audio" "increment" "3";
    }
@@ -366,6 +423,7 @@ bind = SUPER, comma, exec, dms ipc call settings toggle
 bind = SUPER, P, exec, dms ipc call notepad toggle
 bind = SUPERALT, L, exec, dms ipc call lock lock
 bind = SUPER, X, exec, dms ipc call powermenu toggle
+bind = SUPER, C, exec, dms ipc call control-center toggle 
 
 # Audio controls (function keys)
 bindl = , XF86AudioRaiseVolume, exec, dms ipc call audio increment 3
@@ -412,6 +470,8 @@ dms ipc call mpris next
 ```
 
 ## Theming
+
+dms will spawn a matugen process on theme changes to generate color palettes for installed and supported apps. If you do not want these files generated, you can set the env variable `DMS_DISABLE_MATUGEN=1` to disable it entirely.
 
 ### Custom Themes
 
@@ -550,6 +610,13 @@ You can enable the dynamic color schemes in supported terminal apps by modifying
 echo "config-file = ./config-dankcolors" >> ~/.config/ghostty/config
 ```
 
+If you want to disable excessive config reloaded popup sin ghostty, you may wish to also add this:
+
+```bash
+# These are the default danklinux options, if you still want config reloaded and copied to clipboard popups you can skip it.
+echo "app-notifications = no-clipboard-copy,no-config-reload" >> ~/.config/ghostty/config
+```
+
 **kitty**:
 
 ```bash
@@ -660,5 +727,6 @@ DankMaterialShell welcomes contributions! Whether it's bug fixes, new widgets, t
 
 - [quickshell](https://quickshell.org/) the core of what makes a shell like this possible.
 - [niri](https://github.com/YaLTeR/niri) for the awesome scrolling compositor.
+- [Ly-sec](http://github.com/ly-sec) for awesome wallpaper effects among other things from [Noctalia](https://github.com/noctalia-dev/noctalia-shell)
 - [soramanew](https://github.com/soramanew) who built [caelestia](https://github.com/caelestia-dots/shell) which served as inspiration and guidance for many dank widgets.
 - [end-4](https://github.com/end-4) for [dots-hyprland](https://github.com/end-4/dots-hyprland) which also served as inspiration and guidance for many dank widgets.

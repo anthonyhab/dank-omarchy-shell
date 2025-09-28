@@ -28,6 +28,7 @@ These are the essential colors that define your theme's appearance:
     "outline": "#80FF80",
     "surfaceContainer": "#1A2B1A",
     "surfaceContainerHigh": "#264026",
+    "surfaceContainerHighest": "#33553F",
     "error": "#FF0066",
     "warning": "#CCFF00",
     "info": "#00FFCC",
@@ -49,6 +50,7 @@ These are the essential colors that define your theme's appearance:
     "outline": "#4DCC4D",
     "surfaceContainer": "#F5FFF5",
     "surfaceContainerHigh": "#EBFFEB",
+    "surfaceContainerHighest": "#E1FFE1",
     "error": "#B3004D",
     "warning": "#99CC00",
     "info": "#00B899",
@@ -96,6 +98,7 @@ There are example themes you can start from:
 - `surfaceVariantText` - Text color for surfaceVariant backgrounds
 - `surfaceContainer` - Container surface color, slightly different from surface
 - `surfaceContainerHigh` - Elevated container color for layered interfaces
+- `surfaceContainerHighest` - Highest elevation container color for top-level surfaces
 
 **Background Colors**
 - `background` - Main background color for the entire interface

@@ -19,7 +19,7 @@ Rectangle {
         "text": "Weather",
         "icon": "cloud"
     }, {
-        "text": "Top Bar",
+        "text": "Dank Bar",
         "icon": "toolbar"
     }, {
         "text": "System Tray",

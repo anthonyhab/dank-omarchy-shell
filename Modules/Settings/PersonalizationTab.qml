@@ -96,9 +96,9 @@ Item {
                 width: parent.width
                 height: wallpaperSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
-                color: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.3)
+                color: Theme.surfaceContainerHigh
                 border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
-                border.width: 1
+                border.width: 0
 
                 Column {
                     id: wallpaperSection
@@ -137,7 +137,7 @@ Item {
                             radius: Theme.cornerRadius
                             color: Theme.surfaceVariant
                             border.color: Theme.outline
-                            border.width: 1
+                            border.width: 0
 
                             CachingImage {
                                 anchors.fill: parent
@@ -377,7 +377,7 @@ Item {
                                         var currentWallpaper = SessionData.perMonitorWallpaper ? SessionData.getMonitorWallpaper(selectedMonitorName) : SessionData.wallpaperPath
                                         return (currentWallpaper && !currentWallpaper.startsWith("#") && !currentWallpaper.startsWith("we")) ? 1 : 0.5
                                     }
-                                    backgroundColor: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.5)
+                                    backgroundColor: Theme.surfaceContainerHigh
                                     iconColor: Theme.surfaceText
                                     onClicked: {
                                         if (SessionData.perMonitorWallpaper) {
@@ -400,7 +400,7 @@ Item {
                                         var currentWallpaper = SessionData.perMonitorWallpaper ? SessionData.getMonitorWallpaper(selectedMonitorName) : SessionData.wallpaperPath
                                         return (currentWallpaper && !currentWallpaper.startsWith("#") && !currentWallpaper.startsWith("we")) ? 1 : 0.5
                                     }
-                                    backgroundColor: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.5)
+                                    backgroundColor: Theme.surfaceContainerHigh
                                     iconColor: Theme.surfaceText
                                     onClicked: {
                                         if (SessionData.perMonitorWallpaper) {
@@ -805,22 +805,58 @@ Item {
                         text: "Transition Effect"
                         description: "Visual effect used when wallpaper changes"
                         currentValue: {
-                            switch (SessionData.wallpaperTransition) {
-                            case "none": return "None"
-                            case "fade": return "Fade"
-                            case "wipe": return "Wipe"
-                            case "disc": return "Disc"
-                            case "stripes": return "Stripes"
-                            case "iris bloom": return "Iris Bloom"
-                            case "pixelate": return "Pixelate"
-                            case "portal": return "Portal"
-                            default: return "Fade"
-                            }
+                            if (SessionData.wallpaperTransition === "random") return "Random"
+                            return SessionData.wallpaperTransition.charAt(0).toUpperCase() + SessionData.wallpaperTransition.slice(1)
                         }
-                        options: ["None", "Fade", "Wipe", "Disc", "Stripes", "Iris Bloom", "Pixelate", "Portal"]
+                        options: ["Random"].concat(SessionData.availableWallpaperTransitions.map(t => t.charAt(0).toUpperCase() + t.slice(1)))
                         onValueChanged: value => {
                             var transition = value.toLowerCase()
                             SessionData.setWallpaperTransition(transition)
+                        }
+                    }
+
+                    Column {
+                        width: parent.width
+                        spacing: Theme.spacingS
+                        visible: SessionData.wallpaperTransition === "random"
+                        leftPadding: Theme.spacingM
+                        rightPadding: Theme.spacingM
+
+                        StyledText {
+                            text: "Include Transitions"
+                            font.pixelSize: Theme.fontSizeMedium
+                            color: Theme.surfaceText
+                            font.weight: Font.Medium
+                        }
+
+                        StyledText {
+                            text: "Select which transitions to include in randomization"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceVariantText
+                            wrapMode: Text.WordWrap
+                            width: parent.width - parent.leftPadding - parent.rightPadding
+                        }
+
+                        DankButtonGroup {
+                            id: transitionGroup
+                            width: parent.width - parent.leftPadding - parent.rightPadding
+                            selectionMode: "multi"
+                            model: SessionData.availableWallpaperTransitions.filter(t => t !== "none")
+                            initialSelection: SessionData.includedTransitions
+                            currentSelection: SessionData.includedTransitions
+
+                            onSelectionChanged: (index, selected) => {
+                                const transition = model[index]
+                                let newIncluded = [...SessionData.includedTransitions]
+
+                                if (selected && !newIncluded.includes(transition)) {
+                                    newIncluded.push(transition)
+                                } else if (!selected && newIncluded.includes(transition)) {
+                                    newIncluded = newIncluded.filter(t => t !== transition)
+                                }
+
+                                SessionData.includedTransitions = newIncluded
+                            }
                         }
                     }
                 }
@@ -831,9 +867,9 @@ Item {
                 width: parent.width
                 height: dynamicThemeSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
-                color: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.3)
+                color: Theme.surfaceContainerHigh
                 border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
-                border.width: 1
+                border.width: 0
 
                 Column {
                     id: dynamicThemeSection
@@ -889,8 +925,47 @@ Item {
                         }
                     }
 
+<<<<<<< HEAD
 
                     Rectangle {
+=======
+                    DankDropdown {
+                        id: personalizationMatugenPaletteDropdown
+                        width: parent.width
+                        text: "Matugen Palette"
+                        description: "Select the palette algorithm used for wallpaper-based colors"
+                        options: Theme.availableMatugenSchemes.map(function (option) { return option.label })
+                        currentValue: Theme.getMatugenScheme(SettingsData.matugenScheme).label
+                        enabled: Theme.matugenAvailable
+                        opacity: enabled ? 1 : 0.4
+                        onValueChanged: value => {
+                            for (var i = 0; i < Theme.availableMatugenSchemes.length; i++) {
+                                var option = Theme.availableMatugenSchemes[i]
+                                if (option.label === value) {
+                                    SettingsData.setMatugenScheme(option.value)
+                                    break
+                                }
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        text: {
+                            var scheme = Theme.getMatugenScheme(SettingsData.matugenScheme)
+                            return scheme.description + " (" + scheme.value + ")"
+                        }
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.surfaceVariantText
+                        wrapMode: Text.WordWrap
+                        width: parent.width
+                    }
+
+                    StyledText {
+                        text: "matugen not detected - dynamic theming unavailable"
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.error
+                        visible: ToastService.wallpaperErrorStatus === "matugen_missing"
+>>>>>>> upstream/master
                         width: parent.width
                         height: 1
                         color: Theme.outline
@@ -933,9 +1008,9 @@ Item {
                 width: parent.width
                 height: displaySection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
-                color: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.3)
+                color: Theme.surfaceContainerHigh
                 border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
-                border.width: 1
+                border.width: 0
 
                 Column {
                     id: displaySection
@@ -974,15 +1049,6 @@ Item {
                                    }
                     }
 
-                    DankToggle {
-                        width: parent.width
-                        text: "Hide Brightness Slider"
-                        description: "Hide the brightness slider in Control Center and make audio slider full width"
-                        checked: SettingsData.hideBrightnessSlider
-                        onToggled: checked => {
-                                       SettingsData.setHideBrightnessSlider(checked)
-                                   }
-                    }
 
                     Rectangle {
                         width: parent.width
@@ -1329,9 +1395,9 @@ Item {
                 width: parent.width
                 height: lockScreenSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
-                color: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.3)
+                color: Theme.surfaceContainerHigh
                 border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
-                border.width: 1
+                border.width: 0
 
                 Column {
                     id: lockScreenSection
@@ -1377,9 +1443,9 @@ Item {
                 width: parent.width
                 height: fontSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
-                color: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.3)
+                color: Theme.surfaceContainerHigh
                 border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
-                border.width: 1
+                border.width: 0
 
                 Column {
                     id: fontSection
@@ -1553,7 +1619,7 @@ Item {
                                 iconName: "remove"
                                 iconSize: Theme.iconSizeSmall
                                 enabled: SettingsData.fontScale > 1.0
-                                backgroundColor: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.5)
+                                backgroundColor: Theme.surfaceContainerHigh
                                 iconColor: Theme.surfaceText
                                 onClicked: {
                                     var newScale = Math.max(1.0, SettingsData.fontScale - 0.05)
@@ -1565,9 +1631,9 @@ Item {
                                 width: 60
                                 height: 32
                                 radius: Theme.cornerRadius
-                                color: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.3)
+                                color: Theme.surfaceContainerHigh
                                 border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
-                                border.width: 1
+                                border.width: 0
 
                                 StyledText {
                                     anchors.centerIn: parent
@@ -1583,7 +1649,7 @@ Item {
                                 iconName: "add"
                                 iconSize: Theme.iconSizeSmall
                                 enabled: SettingsData.fontScale < 2.0
-                                backgroundColor: Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.5)
+                                backgroundColor: Theme.surfaceContainerHigh
                                 iconColor: Theme.surfaceText
                                 onClicked: {
                                     var newScale = Math.min(2.0, SettingsData.fontScale + 0.05)

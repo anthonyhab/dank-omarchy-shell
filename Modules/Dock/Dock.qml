@@ -20,6 +20,7 @@ PanelWindow {
     property var contextMenu
     property bool autoHide: SettingsData.dockAutoHide
     property real backgroundTransparency: SettingsData.dockTransparency
+    property bool groupByApp: SettingsData.dockGroupByApp
 
     property bool contextMenuOpen: (contextMenu && contextMenu.visible && contextMenu.screen === modelData)
     property bool windowIsFullscreen: {
@@ -30,7 +31,12 @@ PanelWindow {
         const fullscreenApps = ["vlc", "mpv", "kodi", "steam", "lutris", "wine", "dosbox"]
         return fullscreenApps.some(app => activeWindow.appId && activeWindow.appId.toLowerCase().includes(app))
     }
-    property bool reveal: (!autoHide || dockMouseArea.containsMouse || dockApps.requestDockShow || contextMenuOpen) && !windowIsFullscreen
+    property bool reveal: {
+        if (CompositorService.isNiri && NiriService.inOverview) {
+            return SettingsData.dockOpenOnOverview
+        }
+        return (!autoHide || dockMouseArea.containsMouse || dockApps.requestDockShow || contextMenuOpen) && !windowIsFullscreen
+    }
 
     Connections {
         target: SettingsData
@@ -135,6 +141,7 @@ PanelWindow {
                     anchors.bottomMargin: 4
 
                     contextMenu: dock.contextMenu
+                    groupByApp: dock.groupByApp
                 }
             }
 
