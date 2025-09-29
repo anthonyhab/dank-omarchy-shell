@@ -110,6 +110,8 @@ Singleton {
     property string omarchyTheme: ""
     // Home Assistant integration toggle (used in ControlCenterPopout)
     property bool homeAssistantEnabled: false
+    property string homeAssistantUrl: ""
+    property string homeAssistantToken: ""
     property string monoFontFamily: "Fira Code"
     property int fontWeight: Font.Normal
     property real fontScale: 1.0
@@ -326,6 +328,7 @@ Singleton {
                 osLogoContrast = settings.osLogoContrast !== undefined ? settings.osLogoContrast : 1
                 fontFamily = settings.fontFamily !== undefined ? settings.fontFamily : defaultFontFamily
                 fontWeight = settings.fontWeight !== undefined ? settings.fontWeight : Font.Normal
+                monoFontFamily = settings.monoFontFamily !== undefined ? settings.monoFontFamily : defaultMonoFontFamily
                 fontScale = settings.fontScale !== undefined ? settings.fontScale : 1.0
                 notepadUseMonospace = settings.notepadUseMonospace !== undefined ? settings.notepadUseMonospace : true
                 notepadFontFamily = settings.notepadFontFamily !== undefined ? settings.notepadFontFamily : ""
@@ -344,6 +347,8 @@ Singleton {
                 cornerRadius = settings.cornerRadius !== undefined ? settings.cornerRadius : 12
                 notificationOverlayEnabled = settings.notificationOverlayEnabled !== undefined ? settings.notificationOverlayEnabled : false
                 homeAssistantEnabled = settings.homeAssistantEnabled !== undefined ? settings.homeAssistantEnabled : false
+                homeAssistantUrl = settings.homeAssistantUrl !== undefined ? settings.homeAssistantUrl : ""
+                homeAssistantToken = settings.homeAssistantToken !== undefined ? settings.homeAssistantToken : ""
                 dankBarAutoHide = settings.dankBarAutoHide !== undefined ? settings.dankBarAutoHide : (settings.topBarAutoHide !== undefined ? settings.topBarAutoHide : false)
                 dankBarOpenOnOverview = settings.dankBarOpenOnOverview !== undefined ? settings.dankBarOpenOnOverview : (settings.topBarOpenOnOverview !== undefined ? settings.topBarOpenOnOverview : false)
                 dankBarVisible = settings.dankBarVisible !== undefined ? settings.dankBarVisible : (settings.topBarVisible !== undefined ? settings.topBarVisible : true)
@@ -444,6 +449,9 @@ Singleton {
                                                 "osLogoColorOverride": osLogoColorOverride,
                                                 "osLogoBrightness": osLogoBrightness,
                                                 "osLogoContrast": osLogoContrast,
+                                                "fontFamily": fontFamily,
+                                                "monoFontFamily": monoFontFamily,
+                                                "fontWeight": fontWeight,
                                                 "fontScale": fontScale,
                                                 "notepadUseMonospace": notepadUseMonospace,
                                                 "notepadFontFamily": notepadFontFamily,
@@ -463,6 +471,8 @@ Singleton {
                                                 "cornerRadius": cornerRadius,
                                                 "notificationOverlayEnabled": notificationOverlayEnabled,
                                                 "homeAssistantEnabled": homeAssistantEnabled,
+                                                "homeAssistantUrl": homeAssistantUrl,
+                                                "homeAssistantToken": homeAssistantToken,
                                                 "dankBarAutoHide": dankBarAutoHide,
                                                 "dankBarOpenOnOverview": dankBarOpenOnOverview,
                                                 "dankBarVisible": dankBarVisible,

@@ -41,9 +41,13 @@ Singleton {
     Timer {
         id: reconnectTimer
         interval: 30000
-        running: configValid && !connected && !connecting
+        running: configValid && SettingsData.homeAssistantEnabled && !connected && !connecting
         repeat: true
-        onTriggered: root.testConnection()
+        onTriggered: {
+            if (SettingsData.homeAssistantEnabled) {
+                root.testConnection()
+            }
+        }
     }
 
     Timer {
@@ -52,8 +56,10 @@ Singleton {
         repeat: false
         running: false
         onTriggered: {
-            if (configValid) {
+            if (configValid && SettingsData.homeAssistantEnabled) {
                 testConnection()
+            } else {
+                resetConnectionState(true)
             }
         }
     }
@@ -64,6 +70,45 @@ Singleton {
         running: connected
         repeat: true
         onTriggered: root.refreshEntities()
+    }
+
+    Timer {
+        id: credentialChangeDebounce
+        interval: 750
+        repeat: false
+        onTriggered: {
+            if (!SettingsData.homeAssistantEnabled || !configValid) {
+                resetConnectionState(true)
+                return
+            }
+            testConnection()
+        }
+    }
+
+    Connections {
+        target: SettingsData
+
+        function handleConfigurationChange() {
+            if (!SettingsData.homeAssistantEnabled || !configValid) {
+                credentialChangeDebounce.stop()
+                resetConnectionState(true)
+                return
+            }
+
+            credentialChangeDebounce.restart()
+        }
+
+        function onHomeAssistantUrlChanged() {
+            handleConfigurationChange()
+        }
+
+        function onHomeAssistantTokenChanged() {
+            handleConfigurationChange()
+        }
+
+        function onHomeAssistantEnabledChanged() {
+            handleConfigurationChange()
+        }
     }
 
     Process {
@@ -165,6 +210,34 @@ Singleton {
         }
 
         property string _currentCommand: ""
+    }
+
+    function resetConnectionState(clearEntities) {
+        if (testProcess.running) {
+            testProcess.running = false
+        }
+        if (statesProcess.running) {
+            statesProcess.running = false
+        }
+        if (serviceProcess.running) {
+            serviceProcess.running = false
+        }
+
+        const wasConnected = connected
+        const wasConnecting = connecting
+
+        connecting = false
+        connected = false
+        haAvailable = false
+
+        if (clearEntities) {
+            entities = ({})
+            mediaPlayers = ({})
+        }
+
+        if (wasConnected || wasConnecting) {
+            connectionStatusChanged(false)
+        }
     }
 
     Component.onCompleted: {

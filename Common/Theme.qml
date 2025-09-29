@@ -120,6 +120,46 @@ Singleton {
         return fallback
     }
 
+    function colorToHex(color) {
+        if (!color)
+            return ""
+
+        if (typeof color === "string") {
+            if (color.startsWith("#")) {
+                if (color.length === 4) {
+                    return "#" + color[1] + color[1] + color[2] + color[2] + color[3] + color[3]
+                }
+                return color
+            }
+
+            const parsed = Qt.lighter(color, 1)
+            if (parsed && typeof parsed === "object" && parsed.r !== undefined) {
+                return colorToHex(parsed)
+            }
+
+            const rgbaMatch = color.match(/^rgba?\(([^)]+)\)$/)
+            if (rgbaMatch && rgbaMatch[1]) {
+                const parts = rgbaMatch[1].split(',').map(part => parseFloat(part.trim()))
+                if (parts.length >= 3) {
+                    const clampChannel = value => Math.max(0, Math.min(255, Math.round(value)))
+                    return "#" + clampChannel(parts[0]).toString(16).padStart(2, "0")
+                            + clampChannel(parts[1]).toString(16).padStart(2, "0")
+                            + clampChannel(parts[2]).toString(16).padStart(2, "0")
+                }
+            }
+
+            return color
+        }
+
+        if (typeof color === "object" && color.r !== undefined) {
+            const clamp = component => Math.max(0, Math.min(1, component))
+            const toHex = component => Math.round(clamp(component) * 255).toString(16).padStart(2, "0")
+            return "#" + toHex(color.r) + toHex(color.g) + toHex(color.b)
+        }
+
+        return ""
+    }
+
     function loadOmarchyColors() {
         // Read from Omarchy's current theme link, similar to pywal integration
         const omarchyPath = homeDir + "/.config/omarchy/current/theme/dank.colors"
@@ -640,10 +680,19 @@ Singleton {
         const iconTheme = (typeof SettingsData !== "undefined" && SettingsData.iconTheme) ? SettingsData.iconTheme : "System Default"
 
         if (currentTheme === dynamic) {
+            const selectedMatugenType = (typeof SettingsData !== "undefined" && SettingsData.matugenScheme) ? SettingsData.matugenScheme : "scheme-tonal-spot"
+            const omarchyPrimary = currentThemeData && currentThemeData.primary
+            const omarchyHex = colorToHex(omarchyPrimary)
+
+            if (omarchyHex && omarchyHex.startsWith("#")) {
+                setDesiredTheme("hex", omarchyHex, isLight, iconTheme, selectedMatugenType)
+                return
+            }
+
             if (!wallpaperPath) {
                 return
             }
-            const selectedMatugenType = (typeof SettingsData !== "undefined" && SettingsData.matugenScheme) ? SettingsData.matugenScheme : "scheme-tonal-spot"
+
             if (wallpaperPath.startsWith("#")) {
                 setDesiredTheme("hex", wallpaperPath, isLight, iconTheme, selectedMatugenType)
             } else {
@@ -853,9 +902,15 @@ Singleton {
             try {
                 omarchyColors = parseOmarchyColors(omarchyFileView.text())
                 colorUpdateTrigger++
+                if (currentTheme === dynamic) {
+                    generateSystemThemesFromCurrentTheme()
+                }
             } catch (e) {
                 console.warn("Failed to parse Omarchy colors:", e.message)
                 omarchyColors = {}
+                if (currentTheme === dynamic) {
+                    generateSystemThemesFromCurrentTheme()
+                }
             }
         }
 
@@ -870,6 +925,9 @@ Singleton {
         onLoadFailed: function (error) {
             console.warn("Failed to read Omarchy theme file:", error)
             omarchyColors = {}
+            if (currentTheme === dynamic) {
+                generateSystemThemesFromCurrentTheme()
+            }
         }
     }
 
