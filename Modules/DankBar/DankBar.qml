@@ -15,13 +15,33 @@ import qs.Modules.DankBar
 import qs.Services
 import qs.Widgets
 
-PanelWindow {
-    id: root
+Variants {
+    id: dankBarVariants
+    model: SettingsData.getFilteredScreens("dankBar")
 
-    WlrLayershell.namespace: "quickshell:bar"
+    signal colorPickerRequested()
 
-    property var modelData
-    property var notepadVariants: null
+    function getNotepadInstanceForScreen() {
+        if (typeof notepadSlideoutVariants === "undefined" || !notepadSlideoutVariants || !notepadSlideoutVariants.instances) {
+            return null
+        }
+
+        for (var i = 0; i < notepadSlideoutVariants.instances.length; i++) {
+            var slideout = notepadSlideoutVariants.instances[i]
+            if (slideout.modelData && slideout.modelData.name === root.screen?.name) {
+                return slideout
+            }
+        }
+
+        return notepadSlideoutVariants.instances.length > 0 ? notepadSlideoutVariants.instances[0] : null
+    }
+
+    delegate: PanelWindow {
+        id: root
+
+        WlrLayershell.namespace: "quickshell:bar"
+
+        property var modelData: item
 
     property bool gothCornersEnabled: SettingsData.dankBarGothCornersEnabled
     property real wingtipsRadius: Theme.cornerRadius
@@ -29,20 +49,6 @@ PanelWindow {
     readonly property color _bgColor: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, topBarCore?.backgroundTransparency ?? SettingsData.dankBarTransparency)
     readonly property real _dpr: (root.screen && root.screen.devicePixelRatio) ? root.screen.devicePixelRatio : 1
     function px(v) { return Math.round(v * _dpr) / _dpr }
-
-    signal colorPickerRequested()
-
-    function getNotepadInstanceForScreen() {
-        if (!notepadVariants || !notepadVariants.instances) return null
-
-        for (var i = 0; i < notepadVariants.instances.length; i++) {
-            var loader = notepadVariants.instances[i]
-            if (loader.modelData && loader.modelData.name === (root.screen ? root.screen.name : "")) {
-                return loader.item
-            }
-        }
-        return null
-    }
     property string screenName: modelData.name
     readonly property int notificationCount: NotificationService.notifications.length
     readonly property real effectiveBarHeight: Math.max(root.widgetHeight + SettingsData.dankBarInnerPadding + 4, Theme.barHeight - 4 - (8 - SettingsData.dankBarInnerPadding))
@@ -57,30 +63,9 @@ PanelWindow {
             ToastService.showError("Please install Material Symbols Rounded and Restart your Shell. See README.md for instructions")
         }
 
-        if (SettingsData.forceStatusBarLayoutRefresh) {
-            SettingsData.forceStatusBarLayoutRefresh.connect(() => {
-                Qt.callLater(() => {
-                    leftSection.visible = false
-                    centerSection.visible = false
-                    rightSection.visible = false
-                    Qt.callLater(() => {
-                        leftSection.visible = true
-                        centerSection.visible = true
-                        rightSection.visible = true
-                    })
-                })
-            })
-        }
-
         updateGpuTempConfig()
-        Qt.callLater(() => Qt.callLater(forceWidgetRefresh))
     }
 
-    function forceWidgetRefresh() {
-        const sections = [leftSection, centerSection, rightSection]
-        sections.forEach(section => section && (section.visible = false))
-        Qt.callLater(() => sections.forEach(section => section && (section.visible = true)))
-    }
 
     function updateGpuTempConfig() {
         const allWidgets = [...(SettingsData.dankBarLeftWidgets || []), ...(SettingsData.dankBarCenterWidgets || []), ...(SettingsData.dankBarRightWidgets || [])]
@@ -226,7 +211,7 @@ PanelWindow {
         }
 
         Component.onCompleted: {
-            notepadInstance = root.getNotepadInstanceForScreen()
+            notepadInstance = dankBarVariants.getNotepadInstanceForScreen()
         }
 
         Connections {
@@ -553,6 +538,7 @@ PanelWindow {
                                                                  "keyboard_layout_name": keyboardLayoutNameComponent,
                                                                  "vpn": vpnComponent,
                                                                  "notepadButton": notepadButtonComponent,
+                                                                 "omarchyThemeSet": omarchyThemeSetComponent,
                                                                  "colorPicker": colorPickerComponent,
                                                                  "systemUpdate": systemUpdateComponent
                                                              })
@@ -607,12 +593,6 @@ PanelWindow {
                                 let configuredWidgets = 0
                                 for (var i = 0; i < centerRepeater.count; i++) {
                                     const item = centerRepeater.itemAt(i)
-<<<<<<< HEAD:Modules/TopBar/TopBar.qml
-                                    if (item && item.active && item.item) {
-                                        centerWidgets.push(item.item)
-                                        totalWidgets++
-                                        totalWidth += item.item.width
-=======
                                     if (item && topBarContent.getWidgetVisible(item.widgetId)) {
                                         configuredWidgets++
                                         if (item.active && item.item) {
@@ -620,7 +600,6 @@ PanelWindow {
                                             totalWidgets++
                                             totalWidth += item.item.width
                                         }
->>>>>>> upstream/master:Modules/DankBar/DankBar.qml
                                     }
                                 }
 
@@ -1283,6 +1262,17 @@ PanelWindow {
                         }
 
                         Component {
+                            id: omarchyThemeSetComponent
+
+                            OmarchyThemeSet {
+                                widgetHeight: root.widgetHeight
+                                barHeight: root.effectiveBarHeight
+                                section: topBarContent.getWidgetSection(parent) || "right"
+                                parentScreen: root.screen
+                            }
+                        }
+
+                        Component {
                             id: colorPickerComponent
 
                             ColorPicker {
@@ -1291,7 +1281,7 @@ PanelWindow {
                                 section: topBarContent.getWidgetSection(parent) || "right"
                                 parentScreen: root.screen
                                 onColorPickerRequested: {
-                                    root.colorPickerRequested()
+                                    dankBarVariants.colorPickerRequested()
                                 }
                             }
                         }
@@ -1320,6 +1310,5 @@ PanelWindow {
                 }
             }
         }
-
-
+    }
 }

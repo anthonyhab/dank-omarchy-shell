@@ -22,9 +22,6 @@ Rectangle {
         "text": "Dank Bar",
         "icon": "toolbar"
     }, {
-        "text": "System Tray",
-        "icon": "notifications"
-    }, {
         "text": "Widgets",
         "icon": "widgets"
     }, {

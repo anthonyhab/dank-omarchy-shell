@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Widgets
 import qs.Common
 import qs.Widgets
+import "../../Common/IconUtils.js" as IconUtils
 
 Rectangle {
     id: root
@@ -45,30 +46,11 @@ Rectangle {
 
             delegate: Item {
                 property var trayItem: modelData
-                property string iconSource: {
-                    let icon = trayItem && trayItem.icon;
-                    if (typeof icon === 'string' || icon instanceof String) {
-                        if (icon === "") {
-                            return "";
-                        }
-                        if (icon.includes("?path=")) {
-                            const split = icon.split("?path=");
-                            if (split.length !== 2) {
-                                return icon;
-                            }
-
-                            const name = split[0];
-                            const path = split[1];
-                            const fileName = name.substring(name.lastIndexOf("/") + 1);
-                            return `file://${path}/${fileName}`;
-                        }
-                        if (icon.startsWith("/") && !icon.startsWith("file://")) {
-                            return `file://${icon}`;
-                        }
-                        return icon;
-                    }
-                    return "";
-                }
+                property string appId: trayItem?.id || ""
+                property string currentIcon: trayItem?.icon || ""
+                property var resolvedIconData: IconUtils.resolveSystemTrayIcon(Quickshell, appId, currentIcon)
+                readonly property string iconSource: resolvedIconData.path || ""
+                readonly property string fallbackGlyph: IconUtils.fallbackGlyphForSystemTrayIcon(appId, currentIcon, resolvedIconData.name)
 
                 width: 24
                 height: 24
@@ -85,10 +67,19 @@ Rectangle {
                     anchors.centerIn: parent
                     width: 16
                     height: 16
-                    source: parent.iconSource
+                    source: iconSource
+                    visible: iconSource !== ""
                     asynchronous: true
                     smooth: true
                     mipmap: true
+                }
+
+                DankIcon {
+                    anchors.centerIn: parent
+                    size: 16
+                    name: fallbackGlyph
+                    color: Theme.surfaceVariantText
+                    visible: iconSource === ""
                 }
 
                 MouseArea {

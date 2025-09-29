@@ -8,7 +8,7 @@ import qs.Widgets
 import qs.Modules
 
 LazyLoader {
-    active: true
+    active: SessionData.wallpaperControlMode === "internal"
 
     Variants {
         model: SettingsData.getFilteredScreens("wallpaper")
@@ -166,7 +166,7 @@ LazyLoader {
 
                 Loader {
                     anchors.fill: parent
-                    active: !root.source || root.isColorSource
+                    active: !root.source || root.isColorSource || (currentWallpaper.status === Image.Error) || (nextWallpaper.status === Image.Error)
                     asynchronous: true
 
                     sourceComponent: DankBackdrop {
@@ -198,6 +198,11 @@ LazyLoader {
                     smooth: true
                     cache: true
                     fillMode: Image.PreserveAspectCrop
+                    onStatusChanged: {
+                        if (status === Image.Error) {
+                            console.warn("Wallpaper: failed to load current image:", source)
+                        }
+                    }
                 }
 
                 Image {
@@ -212,18 +217,24 @@ LazyLoader {
                     fillMode: Image.PreserveAspectCrop
 
                     onStatusChanged: {
-                        if (status !== Image.Ready)
-                            return
-
-                        if (root.actualTransitionType === "none") {
-                            currentWallpaper.source = source
-                            nextWallpaper.source = ""
-                            root.transitionProgress = 0.0
-                        } else {
-                            visible = true
-                            if (!root.transitioning) {
-                                transitionAnimation.start()
+                        if (status === Image.Ready) {
+                            if (root.actualTransitionType === "none") {
+                                currentWallpaper.source = source
+                                nextWallpaper.source = ""
+                                root.transitionProgress = 0.0
+                            } else {
+                                visible = true
+                                if (!root.transitioning) {
+                                    transitionAnimation.start()
+                                }
                             }
+                        } else if (status === Image.Error) {
+                            console.warn("Wallpaper: failed to load next image:", source, "- using backdrop fallback")
+                            // Cancel any pending transition and clear the bad source
+                            transitionAnimation.stop()
+                            root.transitionProgress = 0.0
+                            nextWallpaper.source = ""
+                            nextWallpaper.visible = false
                         }
                     }
                 }

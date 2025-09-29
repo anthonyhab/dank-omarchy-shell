@@ -63,7 +63,7 @@ Rectangle {
         DankIcon {
             name: root.iconName
             size: Theme.iconSize
-            color: isActive ? Theme.primaryContainer : Theme.primary
+            color: isActive ? Theme.onPrimary : Theme.primary
             anchors.verticalCenter: parent.verticalCenter
             rotation: root.iconRotation
         }
@@ -82,7 +82,7 @@ Rectangle {
                     width: parent.width
                     text: root.text
                     font.pixelSize: Theme.fontSizeMedium
-                    color: isActive ? Theme.primaryContainer : Theme.surfaceText
+                    color: isActive ? Theme.onPrimary : Theme.surfaceText
                     font.weight: Font.Medium
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
@@ -92,7 +92,7 @@ Rectangle {
                     width: parent.width
                     text: root.secondaryText
                     font.pixelSize: Theme.fontSizeSmall
-                    color: isActive ? Theme.primaryContainer : Theme.surfaceVariantText
+                    color: isActive ? Theme.onPrimary : Theme.surfaceVariantText
                     visible: text.length > 0
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap

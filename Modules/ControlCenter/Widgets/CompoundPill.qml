@@ -49,7 +49,7 @@ Rectangle {
         Qt.rgba(Theme.primaryText.r, Theme.primaryText.g, Theme.primaryText.b, 0.22)
     readonly property color _tileRingInactive:
         Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.18)
-    readonly property color _tileIconActive: Theme.primaryContainer
+    readonly property color _tileIconActive: Theme.onPrimary
     readonly property color _tileIconInactive: Theme.primary
 
     property int _padH: Theme.spacingS

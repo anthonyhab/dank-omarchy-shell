@@ -18,12 +18,15 @@ Singleton {
     property string profileLastPath: ""
     property bool perMonitorWallpaper: false
     property var monitorWallpapers: ({})
+    property string wallpaperControlMode: "internal"
+    property bool wallpaperFallbackInProgress: false
+    readonly property int wallpaperValidationRetryLimit: 5
     property bool doNotDisturb: false
     property bool nightModeEnabled: false
     property int nightModeTemperature: 4500
     property bool nightModeAutoEnabled: false
     property string nightModeAutoMode: "time"
-    
+
     property bool hasTriedDefaultSession: false
     readonly property string _stateUrl: StandardPaths.writableLocation(StandardPaths.GenericStateLocation)
     readonly property string _stateDir: Paths.strip(_stateUrl)
@@ -64,9 +67,11 @@ Singleton {
 
     property bool lockBeforeSuspend: false
 
-
     Component.onCompleted: {
         loadSettings()
+        Qt.callLater(function () {
+            handleWallpaperControlModeChange(wallpaperControlMode)
+        })
     }
 
     function loadSettings() {
@@ -122,6 +127,7 @@ Singleton {
                 launchPrefix = settings.launchPrefix !== undefined ? settings.launchPrefix : ""
                 wallpaperTransition = settings.wallpaperTransition !== undefined ? settings.wallpaperTransition : "fade"
                 includedTransitions = settings.includedTransitions !== undefined ? settings.includedTransitions : availableWallpaperTransitions.filter(t => t !== "none")
+                wallpaperControlMode = settings.wallpaperControlMode !== undefined && settings.wallpaperControlMode === "swww" ? "swww" : "internal"
 
                 acMonitorTimeout = settings.acMonitorTimeout !== undefined ? settings.acMonitorTimeout : 0
                 acLockTimeout = settings.acLockTimeout !== undefined ? settings.acLockTimeout : 0
@@ -132,7 +138,7 @@ Singleton {
                 batterySuspendTimeout = settings.batterySuspendTimeout !== undefined ? settings.batterySuspendTimeout : 0
                 batteryHibernateTimeout = settings.batteryHibernateTimeout !== undefined ? settings.batteryHibernateTimeout : 0
                 lockBeforeSuspend = settings.lockBeforeSuspend !== undefined ? settings.lockBeforeSuspend : false
-                
+
                 // Generate system themes but don't override user's theme choice
                 if (typeof Theme !== "undefined") {
                     Theme.generateSystemThemesFromCurrentTheme()
@@ -177,6 +183,7 @@ Singleton {
                                                 "launchPrefix": launchPrefix,
                                                 "wallpaperTransition": wallpaperTransition,
                                                 "includedTransitions": includedTransitions,
+                                                "wallpaperControlMode": wallpaperControlMode,
                                                 "acMonitorTimeout": acMonitorTimeout,
                                                 "acLockTimeout": acLockTimeout,
                                                 "acSuspendTimeout": acSuspendTimeout,
@@ -257,30 +264,279 @@ Singleton {
         saveSettings()
     }
 
+    function _shq(value) {
+        return "'" + String(value).replace(/'/g, "'\\''") + "'"
+    }
+
+    function normalizedWallpaperPath(path) {
+        if (!path || path === "")
+            return ""
+        return path.startsWith("file://") ? path.substring(7) : path
+    }
+
+    function isOmarchyBackgroundPath(path) {
+        if (!path || path === "")
+            return false
+        const normalized = normalizedWallpaperPath(path)
+        return normalized.indexOf("/.config/omarchy/current/theme/backgrounds/") !== -1
+    }
+
+    function validateWallpaperPath(path) {
+        if (!path || path.startsWith("#") || path.startsWith("we:"))
+            return
+
+        const target = normalizedWallpaperPath(path)
+        if (!target)
+            return
+
+        if (wallpaperValidationProcess.running)
+            wallpaperValidationProcess.running = false
+
+        wallpaperValidationRetryTimer.stop()
+        wallpaperValidationProcess.targetPath = target
+        wallpaperValidationProcess.remainingRetries = isOmarchyBackgroundPath(target) ? wallpaperValidationRetryLimit : 0
+        wallpaperValidationProcess.command = ["sh", "-c", "test -f " + _shq(target)]
+        wallpaperValidationProcess.running = true
+    }
+
+    function handleMissingWallpaper(path) {
+        if (!path || path.startsWith("#") || path.startsWith("we:"))
+            return
+
+        const target = normalizedWallpaperPath(path)
+        if (!target)
+            return
+
+        if (isOmarchyBackgroundPath(target)) {
+            const dir = target.substring(0, target.lastIndexOf("/"))
+            const fileName = target.substring(target.lastIndexOf("/") + 1)
+            const dashIndex = fileName.indexOf("-")
+            const prefix = dashIndex > 0 ? fileName.substring(0, dashIndex + 1) : ""
+            const listCommand = "ls -1 "
+                + _shq(dir) + "/*.jpg "
+                + _shq(dir) + "/*.jpeg "
+                + _shq(dir) + "/*.png "
+                + _shq(dir) + "/*.bmp "
+                + _shq(dir) + "/*.gif "
+                + _shq(dir) + "/*.webp 2>/dev/null | sort"
+
+            omarchyFallbackProcess.originalPath = target
+            omarchyFallbackProcess.originalPrefix = prefix
+            omarchyFallbackProcess.hasOutput = false
+            omarchyFallbackProcess.command = ["sh", "-c", listCommand]
+            omarchyFallbackProcess.running = true
+            return
+        }
+
+        console.warn("SessionData: wallpaper path not found:", target)
+    }
+
+    function handleOmarchyFallbackOutput(output, originalPath, prefix) {
+        const trimmed = (output || "").trim()
+        if (!trimmed) {
+            handleFallbackFailure(originalPath)
+            return
+        }
+
+        const files = trimmed.split("\n").map(path => path.trim()).filter(path => path.length > 0)
+        if (files.length === 0) {
+            handleFallbackFailure(originalPath)
+            return
+        }
+
+        var chosen = ""
+        if (prefix && prefix.length > 0) {
+            chosen = files.find(path => {
+                                    const name = path.substring(path.lastIndexOf("/") + 1)
+                                    return name.startsWith(prefix)
+                                }) || ""
+        }
+
+        if (!chosen)
+            chosen = files[0]
+
+        applyWallpaperFallback(chosen)
+    }
+
+    function handleFallbackFailure(originalPath) {
+        if (originalPath && originalPath !== "")
+            console.warn("SessionData: No fallback wallpaper found for", originalPath)
+    }
+
+    function applyWallpaperFallback(newPath) {
+        if (!newPath || newPath === wallpaperPath)
+            return
+
+        wallpaperFallbackInProgress = true
+        setWallpaper(newPath)
+        wallpaperFallbackInProgress = false
+    }
+
+    function swwwTransitionOptions() {
+        var type = "grow"
+        var duration = 1
+
+        switch (wallpaperTransition) {
+        case "none":
+            type = "simple"
+            duration = 0
+            break
+        case "fade":
+            type = "simple"
+            duration = 0.8
+            break
+        case "wipe":
+            type = "wipe"
+            duration = 1
+            break
+        case "stripes":
+            type = "wave"
+            duration = 1
+            break
+        case "iris bloom":
+            type = "center"
+            duration = 1
+            break
+        case "random":
+            type = "random"
+            duration = 1
+            break
+        default:
+            type = "grow"
+            duration = 1
+        }
+
+        return {
+            "transitionType": type,
+            "transitionDuration": duration
+        }
+    }
+
+    function applyWallpaperToSwwwForMonitor(screenName) {
+        if (wallpaperControlMode !== "swww")
+            return
+        if (typeof SwwwWallpaperService === "undefined")
+            return
+
+        var sourcePath = perMonitorWallpaper ? getMonitorWallpaper(screenName) : wallpaperPath
+        if (!sourcePath || sourcePath === "" || sourcePath.startsWith("#") || sourcePath.startsWith("we:")) {
+            if (screenName && screenName !== "")
+                SwwwWallpaperService.clearWallpaper([screenName])
+            else
+                SwwwWallpaperService.clearWallpaper()
+            return
+        }
+
+        const target = normalizedWallpaperPath(sourcePath)
+        if (!target) {
+            if (screenName && screenName !== "")
+                SwwwWallpaperService.clearWallpaper([screenName])
+            else
+                SwwwWallpaperService.clearWallpaper()
+            return
+        }
+
+        var options = swwwTransitionOptions()
+        if (screenName && screenName !== "")
+            options.outputs = [screenName]
+        SwwwWallpaperService.setWallpaper(target, options)
+    }
+
+    function applySwwwPerMonitor() {
+        if (typeof Quickshell === "undefined" || !Quickshell.screens || Quickshell.screens.length === 0) {
+            applyWallpaperToSwwwForMonitor("")
+            return
+        }
+
+        var screens = Quickshell.screens
+        for (var i = 0; i < screens.length; i++) {
+            applyWallpaperToSwwwForMonitor(screens[i].name)
+        }
+    }
+
+    function applyWallpaperToSwww(path) {
+        if (wallpaperControlMode !== "swww")
+            return
+        if (typeof SwwwWallpaperService === "undefined")
+            return
+
+        if (perMonitorWallpaper) {
+            applySwwwPerMonitor()
+            return
+        }
+
+        if (!path || path.startsWith("#") || path.startsWith("we:")) {
+            SwwwWallpaperService.clearWallpaper()
+            return
+        }
+
+        const target = normalizedWallpaperPath(path)
+        if (!target) {
+            SwwwWallpaperService.clearWallpaper()
+            return
+        }
+
+        SwwwWallpaperService.setWallpaper(target, swwwTransitionOptions())
+    }
+
+    function handleWallpaperControlModeChange(mode) {
+        if (mode === "swww") {
+            applyWallpaperToSwww(wallpaperPath)
+        } else if (typeof SwwwWallpaperService !== "undefined") {
+            SwwwWallpaperService.clearWallpaper()
+        }
+    }
+
+    onWallpaperControlModeChanged: {
+        handleWallpaperControlModeChange(wallpaperControlMode)
+    }
+
+    onWallpaperPathChanged: {
+        if (!wallpaperFallbackInProgress) {
+            validateWallpaperPath(wallpaperPath)
+        }
+        applyWallpaperToSwww(wallpaperPath)
+    }
+
     function setWallpaperPath(path) {
         wallpaperPath = path
         saveSettings()
     }
 
     function setWallpaper(imagePath) {
+        var previousPath = wallpaperPath
+
         wallpaperPath = imagePath
         saveSettings()
 
         if (typeof Theme !== "undefined") {
             Theme.generateSystemThemesFromCurrentTheme()
         }
+
+        if (previousPath === imagePath) {
+            if (!wallpaperFallbackInProgress)
+                validateWallpaperPath(imagePath)
+            applyWallpaperToSwww(imagePath)
+        }
     }
 
     function setWallpaperColor(color) {
+        var previousPath = wallpaperPath
+
         wallpaperPath = color
         saveSettings()
 
         if (typeof Theme !== "undefined") {
             Theme.generateSystemThemesFromCurrentTheme()
         }
+
+        if (previousPath === color) {
+            applyWallpaperToSwww(color)
+        }
     }
 
     function clearWallpaper() {
+        var alreadyCleared = wallpaperPath === ""
         wallpaperPath = ""
         saveSettings()
 
@@ -291,6 +547,18 @@ Singleton {
                 Theme.switchTheme("blue")
             }
         }
+
+        if (alreadyCleared) {
+            applyWallpaperToSwww("")
+        }
+    }
+
+    function setWallpaperControlMode(mode) {
+        var normalized = mode === "swww" ? "swww" : "internal"
+        if (wallpaperControlMode === normalized)
+            return
+        wallpaperControlMode = normalized
+        saveSettings()
     }
 
     function setWallpaperLastPath(path) {
@@ -371,17 +639,22 @@ Singleton {
 
     function getMonitorCyclingSettings(screenName) {
         return monitorCyclingSettings[screenName] || {
-            enabled: false,
-            mode: "interval",
-            interval: 300,
-            time: "06:00"
+            "enabled": false,
+            "mode": "interval",
+            "interval": 300,
+            "time": "06:00"
         }
     }
 
     function setMonitorCyclingEnabled(screenName, enabled) {
         var newSettings = Object.assign({}, monitorCyclingSettings)
         if (!newSettings[screenName]) {
-            newSettings[screenName] = { enabled: false, mode: "interval", interval: 300, time: "06:00" }
+            newSettings[screenName] = {
+                "enabled": false,
+                "mode": "interval",
+                "interval": 300,
+                "time": "06:00"
+            }
         }
         newSettings[screenName].enabled = enabled
         monitorCyclingSettings = newSettings
@@ -391,7 +664,12 @@ Singleton {
     function setMonitorCyclingMode(screenName, mode) {
         var newSettings = Object.assign({}, monitorCyclingSettings)
         if (!newSettings[screenName]) {
-            newSettings[screenName] = { enabled: false, mode: "interval", interval: 300, time: "06:00" }
+            newSettings[screenName] = {
+                "enabled": false,
+                "mode": "interval",
+                "interval": 300,
+                "time": "06:00"
+            }
         }
         newSettings[screenName].mode = mode
         monitorCyclingSettings = newSettings
@@ -401,7 +679,12 @@ Singleton {
     function setMonitorCyclingInterval(screenName, interval) {
         var newSettings = Object.assign({}, monitorCyclingSettings)
         if (!newSettings[screenName]) {
-            newSettings[screenName] = { enabled: false, mode: "interval", interval: 300, time: "06:00" }
+            newSettings[screenName] = {
+                "enabled": false,
+                "mode": "interval",
+                "interval": 300,
+                "time": "06:00"
+            }
         }
         newSettings[screenName].interval = interval
         monitorCyclingSettings = newSettings
@@ -411,7 +694,12 @@ Singleton {
     function setMonitorCyclingTime(screenName, time) {
         var newSettings = Object.assign({}, monitorCyclingSettings)
         if (!newSettings[screenName]) {
-            newSettings[screenName] = { enabled: false, mode: "interval", interval: 300, time: "06:00" }
+            newSettings[screenName] = {
+                "enabled": false,
+                "mode": "interval",
+                "interval": 300,
+                "time": "06:00"
+            }
         }
         newSettings[screenName].time = time
         monitorCyclingSettings = newSettings
@@ -426,6 +714,9 @@ Singleton {
         if (typeof Theme !== "undefined") {
             Theme.generateSystemThemesFromCurrentTheme()
         }
+
+        if (wallpaperControlMode === "swww")
+            applyWallpaperToSwww(wallpaperPath)
     }
 
     function setMonitorWallpaper(screenName, path) {
@@ -445,6 +736,9 @@ Singleton {
                 Theme.generateSystemThemesFromCurrentTheme()
             }
         }
+
+        if (wallpaperControlMode === "swww")
+            applyWallpaperToSwwwForMonitor(screenName)
     }
 
     function getMonitorWallpaper(screenName) {
@@ -536,13 +830,91 @@ Singleton {
     Process {
         id: defaultSessionCheckProcess
 
-        command: ["sh", "-c", "CONFIG_DIR=\"" + _stateDir
-            + "/DankMaterialShell\"; if [ -f \"$CONFIG_DIR/default-session.json\" ] && [ ! -f \"$CONFIG_DIR/session.json\" ]; then cp \"$CONFIG_DIR/default-session.json\" \"$CONFIG_DIR/session.json\" && echo 'copied'; else echo 'not_found'; fi"]
+        command: {
+            var configDir = _stateDir + "/DankMaterialShell"
+            var quotedDir = _shq(configDir)
+            var defaultSessionPath = _shq(configDir + "/default-session.json")
+            var sessionPath = _shq(configDir + "/session.json")
+            var script = "CONFIG_DIR=" + quotedDir + "; if [ -f " + defaultSessionPath
+                + " ] && [ ! -f " + sessionPath + " ]; then cp " + defaultSessionPath + " "
+                + sessionPath + " && echo 'copied'; else echo 'not_found'; fi"
+            return ["sh", "-c", script]
+        }
         running: false
         onExited: exitCode => {
             if (exitCode === 0) {
                 console.log("Copied default-session.json to session.json")
                 settingsFile.reload()
+            }
+        }
+    }
+
+    Process {
+        id: wallpaperValidationProcess
+
+        property string targetPath: ""
+        property int remainingRetries: 0
+
+        command: ["sh", "-c", "true"]
+        running: false
+        onExited: exitCode => {
+            if (targetPath === "")
+                return
+            if (exitCode !== 0) {
+                if (remainingRetries > 0 && isOmarchyBackgroundPath(targetPath)) {
+                    remainingRetries--
+                    wallpaperValidationRetryTimer.stop()
+                    wallpaperValidationRetryTimer.start()
+                    return
+                }
+                handleMissingWallpaper(targetPath)
+            } else {
+                wallpaperValidationRetryTimer.stop()
+            }
+            targetPath = ""
+            remainingRetries = 0
+        }
+    }
+
+    Timer {
+        id: wallpaperValidationRetryTimer
+        interval: 250
+        repeat: false
+        running: false
+        onTriggered: {
+            if (!wallpaperValidationProcess.targetPath)
+                return
+            wallpaperValidationProcess.command = ["sh", "-c", "test -f " + _shq(wallpaperValidationProcess.targetPath)]
+            wallpaperValidationProcess.running = true
+        }
+    }
+
+    Process {
+        id: omarchyFallbackProcess
+
+        property string originalPath: ""
+        property string originalPrefix: ""
+        property bool hasOutput: false
+
+        command: ["sh", "-c", "true"]
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                omarchyFallbackProcess.hasOutput = !!text && text.trim().length > 0
+                handleOmarchyFallbackOutput(text, omarchyFallbackProcess.originalPath, omarchyFallbackProcess.originalPrefix)
+            }
+        }
+
+        onRunningChanged: {
+            if (running) {
+                hasOutput = false
+            }
+        }
+
+        onExited: exitCode => {
+            if (!hasOutput) {
+                handleFallbackFailure(originalPath)
             }
         }
     }

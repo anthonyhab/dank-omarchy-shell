@@ -25,8 +25,7 @@ Item {
                 height: launcherButtonSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
-                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                      Theme.outline.b, 0.2)
+                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                 border.width: 0
 
                 Column {
@@ -96,10 +95,8 @@ Item {
                                 bottomPadding: Theme.spacingXS
                                 onEditingFinished: {
                                     var color = text.trim()
-                                    if (color === ""
-                                            || /^#[0-9A-Fa-f]{6}$/.test(color))
-                                        SettingsData.setOSLogoColorOverride(
-                                                    color)
+                                    if (color === "" || /^#[0-9A-Fa-f]{6}$/.test(color))
+                                        SettingsData.setOSLogoColorOverride(color)
                                     else
                                         text = SettingsData.osLogoColorOverride
                                 }
@@ -122,15 +119,13 @@ Item {
                                 height: 20
                                 minimum: 0
                                 maximum: 100
-                                value: Math.round(
-                                           SettingsData.osLogoBrightness * 100)
+                                value: Math.round(SettingsData.osLogoBrightness * 100)
                                 unit: "%"
                                 showValue: true
                                 wheelEnabled: false
                                 thumbOutlineColor: Theme.surfaceContainerHigh
                                 onSliderValueChanged: newValue => {
-                                                          SettingsData.setOSLogoBrightness(
-                                                              newValue / 100)
+                                                          SettingsData.setOSLogoBrightness(newValue / 100)
                                                       }
                             }
                         }
@@ -151,15 +146,13 @@ Item {
                                 height: 20
                                 minimum: 0
                                 maximum: 200
-                                value: Math.round(
-                                           SettingsData.osLogoContrast * 100)
+                                value: Math.round(SettingsData.osLogoContrast * 100)
                                 unit: "%"
                                 showValue: true
                                 wheelEnabled: false
                                 thumbOutlineColor: Theme.surfaceContainerHigh
                                 onSliderValueChanged: newValue => {
-                                                          SettingsData.setOSLogoContrast(
-                                                              newValue / 100)
+                                                          SettingsData.setOSLogoContrast(newValue / 100)
                                                       }
                             }
                         }
@@ -179,8 +172,7 @@ Item {
                 height: workspaceSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
-                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                      Theme.outline.b, 0.2)
+                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                 border.width: 0
 
                 Column {
@@ -216,20 +208,60 @@ Item {
                         description: "Show workspace index numbers in the top bar workspace switcher"
                         checked: SettingsData.showWorkspaceIndex
                         onToggled: checked => {
-                                       return SettingsData.setShowWorkspaceIndex(
-                                           checked)
+                                       return SettingsData.setShowWorkspaceIndex(checked)
                                    }
                     }
 
                     DankToggle {
                         width: parent.width
                         text: "Workspace Padding"
-                        description: "Always show a minimum of 3 workspaces, even if fewer are available"
+                        description: "Always show at least the configured number of workspaces, even if fewer are available"
                         checked: SettingsData.showWorkspacePadding
                         onToggled: checked => {
-                                       return SettingsData.setShowWorkspacePadding(
-                                           checked)
+                                       return SettingsData.setShowWorkspacePadding(checked)
                                    }
+                    }
+
+                    Row {
+                        width: parent.width - Theme.spacingL
+                        spacing: Theme.spacingL
+                        visible: SettingsData.showWorkspacePadding
+                        opacity: visible ? 1 : 0
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.spacingL
+
+                        Column {
+                            width: 120
+                            spacing: Theme.spacingS
+
+                            StyledText {
+                                text: "Padding slots"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.surfaceText
+                                font.weight: Font.Medium
+                            }
+
+                            DankTextField {
+                                width: 100
+                                height: 28
+                                text: SettingsData.workspacePaddingSlots
+                                maximumLength: 3
+                                font.pixelSize: Theme.fontSizeSmall
+                                topPadding: Theme.spacingXS
+                                bottomPadding: Theme.spacingXS
+                                inputMethodHints: Qt.ImhDigitsOnly
+                                onEditingFinished: {
+                                    SettingsData.setWorkspacePaddingSlots(parseInt(text, 10))
+                                }
+                            }
+                        }
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: Theme.mediumDuration
+                                easing.type: Theme.emphasizedEasing
+                            }
+                        }
                     }
 
                     DankToggle {
@@ -238,12 +270,11 @@ Item {
                         description: "Display application icons in workspace indicators"
                         checked: SettingsData.showWorkspaceApps
                         onToggled: checked => {
-                                       return SettingsData.setShowWorkspaceApps(
-                                           checked)
+                                       return SettingsData.setShowWorkspaceApps(checked)
                                    }
                     }
 
-		    Row {
+                    Row {
                         width: parent.width - Theme.spacingL
                         spacing: Theme.spacingL
                         visible: SettingsData.showWorkspaceApps
@@ -291,8 +322,8 @@ Item {
                         description: "Show only workspaces belonging to each specific monitor."
                         checked: SettingsData.workspacesPerMonitor
                         onToggled: checked => {
-                            return SettingsData.setWorkspacesPerMonitor(checked);
-                        }
+                                       return SettingsData.setWorkspacesPerMonitor(checked)
+                                   }
                     }
                 }
             }
@@ -302,8 +333,7 @@ Item {
                 height: mediaSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
-                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                      Theme.outline.b, 0.2)
+                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                 border.width: 0
 
                 Column {
@@ -339,8 +369,8 @@ Item {
                         description: "Use animated wave progress bars for media playback"
                         checked: SettingsData.waveProgressEnabled
                         onToggled: checked => {
-                            return SettingsData.setWaveProgressEnabled(checked)
-                        }
+                                       return SettingsData.setWaveProgressEnabled(checked)
+                                   }
                     }
                 }
             }
@@ -350,8 +380,7 @@ Item {
                 height: runningAppsSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
-                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                      Theme.outline.b, 0.2)
+                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                 border.width: 0
 
                 Column {
@@ -387,8 +416,7 @@ Item {
                         description: "Show only apps running in current workspace"
                         checked: SettingsData.runningAppsCurrentWorkspace
                         onToggled: checked => {
-                                       return SettingsData.setRunningAppsCurrentWorkspace(
-                                           checked)
+                                       return SettingsData.setRunningAppsCurrentWorkspace(checked)
                                    }
                     }
                 }
@@ -399,8 +427,7 @@ Item {
                 height: workspaceIconsSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
-                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                      Theme.outline.b, 0.2)
+                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                 border.width: 0
                 visible: SettingsData.hasNamedWorkspaces()
 
@@ -446,12 +473,8 @@ Item {
                             width: parent.width
                             height: workspaceIconRow.implicitHeight + Theme.spacingM
                             radius: Theme.cornerRadius
-                            color: Qt.rgba(Theme.surfaceContainer.r,
-                                           Theme.surfaceContainer.g,
-                                           Theme.surfaceContainer.b, 0.5)
-                            border.color: Qt.rgba(Theme.outline.r,
-                                                  Theme.outline.g,
-                                                  Theme.outline.b, 0.3)
+                            color: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.5)
+                            border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.3)
                             border.width: 0
 
                             Row {
@@ -479,33 +502,26 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     Component.onCompleted: {
-                                        var iconData = SettingsData.getWorkspaceNameIcon(
-                                                    modelData)
+                                        var iconData = SettingsData.getWorkspaceNameIcon(modelData)
                                         if (iconData) {
-                                            setIcon(iconData.value,
-                                                    iconData.type)
+                                            setIcon(iconData.value, iconData.type)
                                         }
                                     }
 
                                     onIconSelected: (iconName, iconType) => {
-                                                        SettingsData.setWorkspaceNameIcon(
-                                                            modelData, {
-                                                                "type": iconType,
-                                                                "value": iconName
-                                                            })
-                                                        setIcon(iconName,
-                                                                iconType)
+                                                        SettingsData.setWorkspaceNameIcon(modelData, {
+                                                                                              "type": iconType,
+                                                                                              "value": iconName
+                                                                                          })
+                                                        setIcon(iconName, iconType)
                                                     }
 
                                     Connections {
                                         target: SettingsData
                                         function onWorkspaceIconsUpdated() {
-                                            var iconData = SettingsData.getWorkspaceNameIcon(
-                                                        modelData)
+                                            var iconData = SettingsData.getWorkspaceNameIcon(modelData)
                                             if (iconData) {
-                                                iconPicker.setIcon(
-                                                            iconData.value,
-                                                            iconData.type)
+                                                iconPicker.setIcon(iconData.value, iconData.type)
                                             } else {
                                                 iconPicker.setIcon("", "icon")
                                             }
@@ -536,8 +552,7 @@ Item {
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            SettingsData.removeWorkspaceNameIcon(
-                                                        modelData)
+                                            SettingsData.removeWorkspaceNameIcon(modelData)
                                         }
                                     }
                                 }

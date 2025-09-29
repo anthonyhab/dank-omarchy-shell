@@ -152,8 +152,7 @@ Item {
             "description": "Visual divider between widgets",
             "icon": "remove",
             "enabled": true
-        },
-        {
+        }, {
             "id": "network_speed_monitor",
             "text": "Network Speed Monitor",
             "description": "Network download and upload speed display",
@@ -164,7 +163,7 @@ Item {
             "id": "keyboard_layout_name",
             "text": "Keyboard Layout Name",
             "description": "Displays the active keyboard layout and allows switching",
-            "icon": "keyboard",
+            "icon": "keyboard"
         }, {
             "id": "notepadButton",
             "text": "Notepad",
@@ -175,6 +174,12 @@ Item {
             "id": "colorPicker",
             "text": "Color Picker",
             "description": "Quick access to color picker",
+            "icon": "palette",
+            "enabled": true
+        }, {
+            "id": "omarchyThemeSet",
+            "text": "Omarchy Theme Selector",
+            "description": "Left click to randomize, right click to pick a theme",
             "icon": "palette",
             "enabled": true
         }, {
@@ -347,7 +352,7 @@ Item {
             widgets = SettingsData.dankBarCenterWidgets.slice()
         else if (sectionId === "right")
             widgets = SettingsData.dankBarRightWidgets.slice()
-        
+
         if (widgetIndex >= 0 && widgetIndex < widgets.length) {
             var widget = widgets[widgetIndex]
             var widgetId = typeof widget === "string" ? widget : widget.id
@@ -377,7 +382,7 @@ Item {
                 }
             }
         }
-        
+
         if (sectionId === "left")
             SettingsData.setDankBarLeftWidgets(widgets)
         else if (sectionId === "center")
@@ -402,18 +407,14 @@ Item {
                     "id": widget,
                     "enabled": true,
                     "selectedGpuIndex": selectedGpuIndex,
-                    "pciId": DgopService.availableGpus
-                             && DgopService.availableGpus.length
-                             > selectedGpuIndex ? DgopService.availableGpus[selectedGpuIndex].pciId : ""
+                    "pciId": DgopService.availableGpus && DgopService.availableGpus.length > selectedGpuIndex ? DgopService.availableGpus[selectedGpuIndex].pciId : ""
                 }
             } else {
                 var newWidget = {
                     "id": widget.id,
                     "enabled": widget.enabled,
                     "selectedGpuIndex": selectedGpuIndex,
-                    "pciId": DgopService.availableGpus
-                             && DgopService.availableGpus.length
-                             > selectedGpuIndex ? DgopService.availableGpus[selectedGpuIndex].pciId : ""
+                    "pciId": DgopService.availableGpus && DgopService.availableGpus.length > selectedGpuIndex ? DgopService.availableGpus[selectedGpuIndex].pciId : ""
                 }
                 if (widget.size !== undefined)
                     newWidget.size = widget.size
@@ -497,15 +498,11 @@ Item {
             widgetData = SettingsData.dankBarRightWidgets || []
         widgetData.forEach(widget => {
                                var widgetId = typeof widget === "string" ? widget : widget.id
-                               var widgetEnabled = typeof widget
-                               === "string" ? true : widget.enabled
+                               var widgetEnabled = typeof widget === "string" ? true : widget.enabled
                                var widgetSize = typeof widget === "string" ? undefined : widget.size
-                               var widgetSelectedGpuIndex = typeof widget
-                               === "string" ? undefined : widget.selectedGpuIndex
-                               var widgetPciId = typeof widget
-                               === "string" ? undefined : widget.pciId
-                               var widgetMountPath = typeof widget
-                               === "string" ? undefined : widget.mountPath
+                               var widgetSelectedGpuIndex = typeof widget === "string" ? undefined : widget.selectedGpuIndex
+                               var widgetPciId = typeof widget === "string" ? undefined : widget.pciId
+                               var widgetMountPath = typeof widget === "string" ? undefined : widget.mountPath
                                var widgetShowNetworkIcon = typeof widget === "string" ? undefined : widget.showNetworkIcon
                                var widgetShowBluetoothIcon = typeof widget === "string" ? undefined : widget.showBluetoothIcon
                                var widgetShowAudioIcon = typeof widget === "string" ? undefined : widget.showAudioIcon
@@ -558,9 +555,7 @@ Item {
                              var updated = false
                              for (var i = 0; i < widgets.length; i++) {
                                  var widget = widgets[i]
-                                 if (typeof widget === "object"
-                                     && widget.id === "spacer"
-                                     && !widget.size) {
+                                 if (typeof widget === "object" && widget.id === "spacer" && !widget.size) {
                                      widgets[i] = Object.assign({}, widget, {
                                                                     "size": 20
                                                                 })
@@ -597,8 +592,7 @@ Item {
                 height: positionSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
-                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                      Theme.outline.b, 0.2)
+                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                 border.width: 0
 
                 Column {
@@ -633,10 +627,10 @@ Item {
                             model: ["Top", "Bottom"]
                             currentIndex: SettingsData.dankBarAtBottom ? 1 : 0
                             onSelectionChanged: (index, selected) => {
-                                if (selected) {
-                                    SettingsData.setDankBarAtBottom(index === 1)
-                                }
-                            }
+                                                    if (selected) {
+                                                        SettingsData.setDankBarAtBottom(index === 1)
+                                                    }
+                                                }
                         }
                     }
                 }
@@ -648,8 +642,7 @@ Item {
                 height: dankBarAutoHideSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
-                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                      Theme.outline.b, 0.2)
+                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                 border.width: 0
 
                 Column {
@@ -671,8 +664,7 @@ Item {
                         }
 
                         Column {
-                            width: parent.width - Theme.iconSize - Theme.spacingM
-                                   - autoHideToggle.width - Theme.spacingM
+                            width: parent.width - Theme.iconSize - Theme.spacingM - autoHideToggle.width - Theme.spacingM
                             spacing: Theme.spacingXS
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -698,8 +690,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             checked: SettingsData.dankBarAutoHide
                             onToggled: toggled => {
-                                           return SettingsData.setDankBarAutoHide(
-                                               toggled)
+                                           return SettingsData.setDankBarAutoHide(toggled)
                                        }
                         }
                     }
@@ -723,8 +714,7 @@ Item {
                         }
 
                         Column {
-                            width: parent.width - Theme.iconSize - Theme.spacingM
-                                   - visibilityToggle.width - Theme.spacingM
+                            width: parent.width - Theme.iconSize - Theme.spacingM - visibilityToggle.width - Theme.spacingM
                             spacing: Theme.spacingXS
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -750,8 +740,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             checked: SettingsData.dankBarVisible
                             onToggled: toggled => {
-                                           return SettingsData.setDankBarVisible(
-                                               toggled)
+                                           return SettingsData.setDankBarVisible(toggled)
                                        }
                         }
                     }
@@ -777,8 +766,7 @@ Item {
                         }
 
                         Column {
-                            width: parent.width - Theme.iconSize - Theme.spacingM
-                                   - overviewToggle.width - Theme.spacingM
+                            width: parent.width - Theme.iconSize - Theme.spacingM - overviewToggle.width - Theme.spacingM
                             spacing: Theme.spacingXS
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -804,14 +792,12 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             checked: SettingsData.dankBarOpenOnOverview
                             onToggled: toggled => {
-                                           return SettingsData.setDankBarOpenOnOverview(
-                                               toggled)
+                                           return SettingsData.setDankBarOpenOnOverview(toggled)
                                        }
                         }
                     }
                 }
             }
-
 
             // Spacing
             StyledRect {
@@ -819,8 +805,7 @@ Item {
                 height: dankBarSpacingSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
-                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                      Theme.outline.b, 0.2)
+                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                 border.width: 0
 
                 Column {
@@ -872,8 +857,7 @@ Item {
                             wheelEnabled: false
                             thumbOutlineColor: Theme.surfaceContainerHigh
                             onSliderValueChanged: newValue => {
-                                                      SettingsData.setDankBarSpacing(
-                                                          newValue)
+                                                      SettingsData.setDankBarSpacing(newValue)
                                                   }
                         }
                     }
@@ -900,8 +884,7 @@ Item {
                             wheelEnabled: false
                             thumbOutlineColor: Theme.surfaceContainerHigh
                             onSliderValueChanged: newValue => {
-                                                      SettingsData.setDankBarBottomGap(
-                                                          newValue)
+                                                      SettingsData.setDankBarBottomGap(newValue)
                                                   }
                         }
                     }
@@ -928,12 +911,10 @@ Item {
                             wheelEnabled: false
                             thumbOutlineColor: Theme.surfaceContainerHigh
                             onSliderValueChanged: newValue => {
-                                                      SettingsData.setDankBarInnerPadding(
-                                                          newValue)
+                                                      SettingsData.setDankBarInnerPadding(newValue)
                                                   }
                         }
                     }
-
 
                     DankToggle {
                         width: parent.width
@@ -941,8 +922,7 @@ Item {
                         description: "Removes rounded corners from bar container."
                         checked: SettingsData.dankBarSquareCorners
                         onToggled: checked => {
-                                       SettingsData.setDankBarSquareCorners(
-                                           checked)
+                                       SettingsData.setDankBarSquareCorners(checked)
                                    }
                     }
 
@@ -952,8 +932,7 @@ Item {
                         description: "Remove widget backgrounds for a minimal look with tighter spacing."
                         checked: SettingsData.dankBarNoBackground
                         onToggled: checked => {
-                                       SettingsData.setDankBarNoBackground(
-                                           checked)
+                                       SettingsData.setDankBarNoBackground(checked)
                                    }
                     }
 
@@ -963,8 +942,7 @@ Item {
                         description: "Add curved swooping tips at the bottom of the bar."
                         checked: SettingsData.dankBarGothCornersEnabled
                         onToggled: checked => {
-                                       SettingsData.setDankBarGothCornersEnabled(
-                                           checked)
+                                       SettingsData.setDankBarGothCornersEnabled(checked)
                                    }
                     }
                 }
@@ -976,8 +954,7 @@ Item {
                 height: widgetManagementSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
-                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                      Theme.outline.b, 0.2)
+                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                 border.width: 0
 
                 Column {
@@ -1021,11 +998,7 @@ Item {
                             color: resetArea.containsMouse ? Theme.surfacePressed : Theme.surfaceVariant
                             Layout.alignment: Qt.AlignVCenter
                             border.width: 0
-                            border.color: resetArea.containsMouse ? Theme.outline : Qt.rgba(
-                                                                        Theme.outline.r,
-                                                                        Theme.outline.g,
-                                                                        Theme.outline.b,
-                                                                        0.5)
+                            border.color: resetArea.containsMouse ? Theme.outline : Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.5)
 
                             Row {
                                 anchors.centerIn: parent
@@ -1054,12 +1027,9 @@ Item {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    SettingsData.setDankBarLeftWidgets(
-                                                defaultLeftWidgets)
-                                    SettingsData.setDankBarCenterWidgets(
-                                                defaultCenterWidgets)
-                                    SettingsData.setDankBarRightWidgets(
-                                                defaultRightWidgets)
+                                    SettingsData.setDankBarLeftWidgets(defaultLeftWidgets)
+                                    SettingsData.setDankBarCenterWidgets(defaultCenterWidgets)
+                                    SettingsData.setDankBarRightWidgets(defaultRightWidgets)
                                 }
                             }
 
@@ -1099,8 +1069,7 @@ Item {
                     height: leftSection.implicitHeight + Theme.spacingL * 2
                     radius: Theme.cornerRadius
                     color: Theme.surfaceContainerHigh
-                    border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                          Theme.outline.b, 0.2)
+                    border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                     border.width: 0
 
                     WidgetsTabSection {
@@ -1113,54 +1082,41 @@ Item {
                         allWidgets: dankBarTab.baseWidgetDefinitions
                         items: dankBarTab.getItemsForSection("left")
                         onItemEnabledChanged: (sectionId, itemId, enabled) => {
-                                                  dankBarTab.handleItemEnabledChanged(
-                                                      sectionId,
-                                                      itemId, enabled)
+                                                  dankBarTab.handleItemEnabledChanged(sectionId, itemId, enabled)
                                               }
                         onItemOrderChanged: newOrder => {
-                                                dankBarTab.handleItemOrderChanged(
-                                                    "left", newOrder)
+                                                dankBarTab.handleItemOrderChanged("left", newOrder)
                                             }
                         onAddWidget: sectionId => {
-                                         widgetSelectionPopup.allWidgets
-                                         = dankBarTab.baseWidgetDefinitions
+                                         widgetSelectionPopup.allWidgets = dankBarTab.baseWidgetDefinitions
                                          widgetSelectionPopup.targetSection = sectionId
                                          widgetSelectionPopup.safeOpen()
                                      }
                         onRemoveWidget: (sectionId, widgetIndex) => {
-                                            dankBarTab.removeWidgetFromSection(
-                                                sectionId, widgetIndex)
+                                            dankBarTab.removeWidgetFromSection(sectionId, widgetIndex)
                                         }
                         onSpacerSizeChanged: (sectionId, widgetIndex, newSize) => {
-                                                 dankBarTab.handleSpacerSizeChanged(
-                                                     sectionId, widgetIndex, newSize)
+                                                 dankBarTab.handleSpacerSizeChanged(sectionId, widgetIndex, newSize)
                                              }
                         onCompactModeChanged: (widgetId, value) => {
                                                   if (widgetId === "clock") {
-                                                      SettingsData.setClockCompactMode(
-                                                          value)
+                                                      SettingsData.setClockCompactMode(value)
                                                   } else if (widgetId === "music") {
-                                                      SettingsData.setMediaSize(
-                                                          value)
+                                                      SettingsData.setMediaSize(value)
                                                   } else if (widgetId === "focusedWindow") {
-                                                      SettingsData.setFocusedWindowCompactMode(
-                                                          value)
+                                                      SettingsData.setFocusedWindowCompactMode(value)
                                                   } else if (widgetId === "runningApps") {
-                                                      SettingsData.setRunningAppsCompactMode(
-                                                          value)
+                                                      SettingsData.setRunningAppsCompactMode(value)
                                                   }
                                               }
                         onControlCenterSettingChanged: (sectionId, widgetIndex, settingName, value) => {
                                                            handleControlCenterSettingChanged(sectionId, widgetIndex, settingName, value)
                                                        }
                         onGpuSelectionChanged: (sectionId, widgetIndex, selectedIndex) => {
-                                                   dankBarTab.handleGpuSelectionChanged(
-                                                       sectionId, widgetIndex,
-                                                       selectedIndex)
+                                                   dankBarTab.handleGpuSelectionChanged(sectionId, widgetIndex, selectedIndex)
                                                }
                         onDiskMountSelectionChanged: (sectionId, widgetIndex, mountPath) => {
-                                                         dankBarTab.handleDiskMountSelectionChanged(
-                                                             sectionId, widgetIndex, mountPath)
+                                                         dankBarTab.handleDiskMountSelectionChanged(sectionId, widgetIndex, mountPath)
                                                      }
                     }
                 }
@@ -1171,8 +1127,7 @@ Item {
                     height: centerSection.implicitHeight + Theme.spacingL * 2
                     radius: Theme.cornerRadius
                     color: Theme.surfaceContainerHigh
-                    border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                          Theme.outline.b, 0.2)
+                    border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                     border.width: 0
 
                     WidgetsTabSection {
@@ -1185,54 +1140,41 @@ Item {
                         allWidgets: dankBarTab.baseWidgetDefinitions
                         items: dankBarTab.getItemsForSection("center")
                         onItemEnabledChanged: (sectionId, itemId, enabled) => {
-                                                  dankBarTab.handleItemEnabledChanged(
-                                                      sectionId,
-                                                      itemId, enabled)
+                                                  dankBarTab.handleItemEnabledChanged(sectionId, itemId, enabled)
                                               }
                         onItemOrderChanged: newOrder => {
-                                                dankBarTab.handleItemOrderChanged(
-                                                    "center", newOrder)
+                                                dankBarTab.handleItemOrderChanged("center", newOrder)
                                             }
                         onAddWidget: sectionId => {
-                                         widgetSelectionPopup.allWidgets
-                                         = dankBarTab.baseWidgetDefinitions
+                                         widgetSelectionPopup.allWidgets = dankBarTab.baseWidgetDefinitions
                                          widgetSelectionPopup.targetSection = sectionId
                                          widgetSelectionPopup.safeOpen()
                                      }
                         onRemoveWidget: (sectionId, widgetIndex) => {
-                                            dankBarTab.removeWidgetFromSection(
-                                                sectionId, widgetIndex)
+                                            dankBarTab.removeWidgetFromSection(sectionId, widgetIndex)
                                         }
                         onSpacerSizeChanged: (sectionId, widgetIndex, newSize) => {
-                                                 dankBarTab.handleSpacerSizeChanged(
-                                                     sectionId, widgetIndex, newSize)
+                                                 dankBarTab.handleSpacerSizeChanged(sectionId, widgetIndex, newSize)
                                              }
                         onCompactModeChanged: (widgetId, value) => {
                                                   if (widgetId === "clock") {
-                                                      SettingsData.setClockCompactMode(
-                                                          value)
+                                                      SettingsData.setClockCompactMode(value)
                                                   } else if (widgetId === "music") {
-                                                      SettingsData.setMediaSize(
-                                                          value)
+                                                      SettingsData.setMediaSize(value)
                                                   } else if (widgetId === "focusedWindow") {
-                                                      SettingsData.setFocusedWindowCompactMode(
-                                                          value)
+                                                      SettingsData.setFocusedWindowCompactMode(value)
                                                   } else if (widgetId === "runningApps") {
-                                                      SettingsData.setRunningAppsCompactMode(
-                                                          value)
+                                                      SettingsData.setRunningAppsCompactMode(value)
                                                   }
                                               }
                         onControlCenterSettingChanged: (sectionId, widgetIndex, settingName, value) => {
                                                            handleControlCenterSettingChanged(sectionId, widgetIndex, settingName, value)
                                                        }
                         onGpuSelectionChanged: (sectionId, widgetIndex, selectedIndex) => {
-                                                   dankBarTab.handleGpuSelectionChanged(
-                                                       sectionId, widgetIndex,
-                                                       selectedIndex)
+                                                   dankBarTab.handleGpuSelectionChanged(sectionId, widgetIndex, selectedIndex)
                                                }
                         onDiskMountSelectionChanged: (sectionId, widgetIndex, mountPath) => {
-                                                         dankBarTab.handleDiskMountSelectionChanged(
-                                                             sectionId, widgetIndex, mountPath)
+                                                         dankBarTab.handleDiskMountSelectionChanged(sectionId, widgetIndex, mountPath)
                                                      }
                     }
                 }
@@ -1243,8 +1185,7 @@ Item {
                     height: rightSection.implicitHeight + Theme.spacingL * 2
                     radius: Theme.cornerRadius
                     color: Theme.surfaceContainerHigh
-                    border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                          Theme.outline.b, 0.2)
+                    border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
                     border.width: 0
 
                     WidgetsTabSection {
@@ -1257,54 +1198,41 @@ Item {
                         allWidgets: dankBarTab.baseWidgetDefinitions
                         items: dankBarTab.getItemsForSection("right")
                         onItemEnabledChanged: (sectionId, itemId, enabled) => {
-                                                  dankBarTab.handleItemEnabledChanged(
-                                                      sectionId,
-                                                      itemId, enabled)
+                                                  dankBarTab.handleItemEnabledChanged(sectionId, itemId, enabled)
                                               }
                         onItemOrderChanged: newOrder => {
-                                                dankBarTab.handleItemOrderChanged(
-                                                    "right", newOrder)
+                                                dankBarTab.handleItemOrderChanged("right", newOrder)
                                             }
                         onAddWidget: sectionId => {
-                                         widgetSelectionPopup.allWidgets
-                                         = dankBarTab.baseWidgetDefinitions
+                                         widgetSelectionPopup.allWidgets = dankBarTab.baseWidgetDefinitions
                                          widgetSelectionPopup.targetSection = sectionId
                                          widgetSelectionPopup.safeOpen()
                                      }
                         onRemoveWidget: (sectionId, widgetIndex) => {
-                                            dankBarTab.removeWidgetFromSection(
-                                                sectionId, widgetIndex)
+                                            dankBarTab.removeWidgetFromSection(sectionId, widgetIndex)
                                         }
                         onSpacerSizeChanged: (sectionId, widgetIndex, newSize) => {
-                                                 dankBarTab.handleSpacerSizeChanged(
-                                                     sectionId, widgetIndex, newSize)
+                                                 dankBarTab.handleSpacerSizeChanged(sectionId, widgetIndex, newSize)
                                              }
                         onCompactModeChanged: (widgetId, value) => {
                                                   if (widgetId === "clock") {
-                                                      SettingsData.setClockCompactMode(
-                                                          value)
+                                                      SettingsData.setClockCompactMode(value)
                                                   } else if (widgetId === "music") {
-                                                      SettingsData.setMediaSize(
-                                                          value)
+                                                      SettingsData.setMediaSize(value)
                                                   } else if (widgetId === "focusedWindow") {
-                                                      SettingsData.setFocusedWindowCompactMode(
-                                                          value)
+                                                      SettingsData.setFocusedWindowCompactMode(value)
                                                   } else if (widgetId === "runningApps") {
-                                                      SettingsData.setRunningAppsCompactMode(
-                                                          value)
+                                                      SettingsData.setRunningAppsCompactMode(value)
                                                   }
                                               }
                         onControlCenterSettingChanged: (sectionId, widgetIndex, settingName, value) => {
                                                            handleControlCenterSettingChanged(sectionId, widgetIndex, settingName, value)
                                                        }
                         onGpuSelectionChanged: (sectionId, widgetIndex, selectedIndex) => {
-                                                   dankBarTab.handleGpuSelectionChanged(
-                                                       sectionId, widgetIndex,
-                                                       selectedIndex)
+                                                   dankBarTab.handleGpuSelectionChanged(sectionId, widgetIndex, selectedIndex)
                                                }
                         onDiskMountSelectionChanged: (sectionId, widgetIndex, mountPath) => {
-                                                         dankBarTab.handleDiskMountSelectionChanged(
-                                                             sectionId, widgetIndex, mountPath)
+                                                         dankBarTab.handleDiskMountSelectionChanged(sectionId, widgetIndex, mountPath)
                                                      }
                     }
                 }
@@ -1317,8 +1245,7 @@ Item {
 
         anchors.centerIn: parent
         onWidgetSelected: (widgetId, targetSection) => {
-                              dankBarTab.addWidgetToSection(widgetId,
-                                                           targetSection)
+                              dankBarTab.addWidgetToSection(widgetId, targetSection)
                           }
     }
 }

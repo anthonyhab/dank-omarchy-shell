@@ -40,12 +40,8 @@ Item {
 
     onAppDataChanged: updateDesktopEntry()
 
-    Connections {
-        target: DesktopEntries
-        function onApplicationsChanged() {
-            updateDesktopEntry()
-        }
-    }
+    // Removed invalid Connections handler for DesktopEntries applicationsChanged signal
+    // The component already refreshes its desktop entry via onAppDataChanged and onCompleted
     property bool isWindowFocused: {
         if (!appData) {
             return false

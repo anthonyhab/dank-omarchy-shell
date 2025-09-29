@@ -25,6 +25,7 @@ StyledRect {
     property alias echoMode: textInput.echoMode
     property alias validator: textInput.validator
     property alias maximumLength: textInput.maximumLength
+    property alias inputMethodHints: textInput.inputMethodHints
     property string leftIconName: ""
     property int leftIconSize: Theme.iconSize
     property color leftIconColor: Theme.surfaceVariantText
@@ -129,7 +130,7 @@ StyledRect {
 
         MouseArea {
             anchors.fill: parent
-            hoverEnabled: true 
+            hoverEnabled: true
             cursorShape: Qt.IBeamCursor
             acceptedButtons: Qt.NoButton
         }

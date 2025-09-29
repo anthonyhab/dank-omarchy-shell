@@ -75,7 +75,7 @@ Rectangle {
             }
 
             StyledText {
-                text: DgopService.networkRxRate > 0 ? formatNetworkSpeed(DgopService.networkRxRate) : "0 B/s"
+                text: DgopService.networkRxRate > 0 ? formatNetworkSpeed(DgopService.networkRxRate || 0) : "0 B/s"
                 font.pixelSize: Theme.fontSizeSmall
                 font.weight: Font.Medium
                 color: Theme.surfaceText
@@ -114,7 +114,7 @@ Rectangle {
             }
 
             StyledText {
-                text: DgopService.networkTxRate > 0 ? formatNetworkSpeed(DgopService.networkTxRate) : "0 B/s"
+                text: DgopService.networkTxRate > 0 ? formatNetworkSpeed(DgopService.networkTxRate || 0) : "0 B/s"
                 font.pixelSize: Theme.fontSizeSmall
                 font.weight: Font.Medium
                 color: Theme.surfaceText

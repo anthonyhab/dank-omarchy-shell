@@ -66,7 +66,7 @@ PanelWindow {
                        customTransparency >= 0 ? customTransparency : SettingsData.popupTransparency)
         border.color: Theme.outlineMedium
         border.width: 1
-        visible: isVisible
+        visible: isVisible || slideAnimation.running
 
         transform: Translate {
             id: slideTransform

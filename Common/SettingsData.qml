@@ -1,6 +1,6 @@
 pragma Singleton
 
-pragma ComponentBehavior: Bound
+pragma ComponentBehavior
 
 import QtCore
 import QtQuick
@@ -11,6 +11,13 @@ import qs.Services
 
 Singleton {
     id: root
+
+    enum Position {
+        Top,
+        Bottom,
+        Left,
+        Right
+    }
 
     // Theme settings
     property string currentThemeName: "blue"
@@ -46,18 +53,26 @@ Singleton {
     property bool controlCenterShowNetworkIcon: true
     property bool controlCenterShowBluetoothIcon: true
     property bool controlCenterShowAudioIcon: true
-    property var controlCenterWidgets: [
-        {"id": "volumeSlider", "enabled": true, "width": 50},
-        {"id": "brightnessSlider", "enabled": true, "width": 50},
-        {"id": "wifi", "enabled": true, "width": 50},
-        {"id": "bluetooth", "enabled": true, "width": 50},
-        {"id": "audioOutput", "enabled": true, "width": 50},
-        {"id": "audioInput", "enabled": true, "width": 50},
-        {"id": "nightMode", "enabled": true, "width": 50},
-        {"id": "darkMode", "enabled": true, "width": 50}
+    readonly property var controlCenterLegacyWidgetIds: []
+    readonly property var controlCenterAllowedWidgetIds: [
+        "volumeSlider",
+        "brightnessSlider",
+        "inputVolumeSlider",
+        "wifi",
+        "bluetooth",
+        "audioOutput",
+        "audioInput",
+        "doNotDisturb",
+        "idleInhibitor",
+        "battery",
+        "diskUsage",
+        "nightMode",
+        "darkMode"
     ]
+    property var controlCenterWidgets: defaultControlCenterWidgets()
     property bool showWorkspaceIndex: false
     property bool showWorkspacePadding: false
+    property int workspacePaddingSlots: 3
     property bool showWorkspaceApps: false
     property int maxWorkspaceIcons: 3
     property bool workspacesPerMonitor: true
@@ -90,8 +105,11 @@ Singleton {
     property string osLogoColorOverride: ""
     property real osLogoBrightness: 0.5
     property real osLogoContrast: 1
->>>>>>> upstream/master
-    property string fontFamily: "Inter Variable"
+    property bool weatherEnabled: true
+    // Selected Omarchy theme name (optional, used by Settings UI)
+    property string omarchyTheme: ""
+    // Home Assistant integration toggle (used in ControlCenterPopout)
+    property bool homeAssistantEnabled: false
     property string monoFontFamily: "Fira Code"
     property int fontWeight: Font.Normal
     property real fontScale: 1.0
@@ -119,6 +137,9 @@ Singleton {
     property bool dockAutoHide: false
     property bool dockGroupByApp: false
     property bool dockOpenOnOverview: false
+    property int dockPosition: SettingsData.Position.Bottom
+    property real dockSpacing: 4
+    property real dockBottomGap: 0
     property real cornerRadius: 12
     property bool notificationOverlayEnabled: false
     property bool dankBarAutoHide: false
@@ -145,7 +166,12 @@ Singleton {
     readonly property string _configUrl: StandardPaths.writableLocation(StandardPaths.ConfigLocation)
     readonly property string _configDir: Paths.strip(_configUrl)
 
+    // Currently selected UI font family. Used by Widgets/StyledText.qml
+    // Initialize to the default so bindings never see 'undefined'.
+    property string fontFamily: defaultFontFamily
+
     signal forceDankBarLayoutRefresh
+    signal forceDockLayoutRefresh
     signal widgetDataChanged
     signal workspaceIconsUpdated
 
@@ -212,8 +238,13 @@ Singleton {
                 }
                 customThemeFile = settings.customThemeFile !== undefined ? settings.customThemeFile : ""
                 matugenScheme = settings.matugenScheme !== undefined ? settings.matugenScheme : "scheme-tonal-spot"
-                dankBarTransparency = settings.dankBarTransparency !== undefined ? (settings.dankBarTransparency > 1 ? settings.dankBarTransparency / 100 : settings.dankBarTransparency) : (settings.topBarTransparency !== undefined ? (settings.topBarTransparency > 1 ? settings.topBarTransparency / 100 : settings.topBarTransparency) : 1.0)
-                dankBarWidgetTransparency = settings.dankBarWidgetTransparency !== undefined ? (settings.dankBarWidgetTransparency > 1 ? settings.dankBarWidgetTransparency / 100 : settings.dankBarWidgetTransparency) : (settings.topBarWidgetTransparency !== undefined ? (settings.topBarWidgetTransparency > 1 ? settings.topBarWidgetTransparency / 100 : settings.topBarWidgetTransparency) : 1.0)
+                dankBarTransparency = settings.dankBarTransparency
+                        !== undefined ? (settings.dankBarTransparency > 1 ? settings.dankBarTransparency
+                                                                            / 100 : settings.dankBarTransparency) : (settings.topBarTransparency !== undefined ? (settings.topBarTransparency > 1 ? settings.topBarTransparency / 100 : settings.topBarTransparency) : 1.0)
+                dankBarWidgetTransparency = settings.dankBarWidgetTransparency
+                        !== undefined ? (settings.dankBarWidgetTransparency
+                                         > 1 ? settings.dankBarWidgetTransparency
+                                               / 100 : settings.dankBarWidgetTransparency) : (settings.topBarWidgetTransparency !== undefined ? (settings.topBarWidgetTransparency > 1 ? settings.topBarWidgetTransparency / 100 : settings.topBarWidgetTransparency) : 1.0)
                 popupTransparency = settings.popupTransparency !== undefined ? (settings.popupTransparency > 1 ? settings.popupTransparency / 100 : settings.popupTransparency) : 1.0
                 dockTransparency = settings.dockTransparency !== undefined ? (settings.dockTransparency > 1 ? settings.dockTransparency / 100 : settings.dockTransparency) : 1
                 use24HourClock = settings.use24HourClock !== undefined ? settings.use24HourClock : true
@@ -243,18 +274,12 @@ Singleton {
                 controlCenterShowNetworkIcon = settings.controlCenterShowNetworkIcon !== undefined ? settings.controlCenterShowNetworkIcon : true
                 controlCenterShowBluetoothIcon = settings.controlCenterShowBluetoothIcon !== undefined ? settings.controlCenterShowBluetoothIcon : true
                 controlCenterShowAudioIcon = settings.controlCenterShowAudioIcon !== undefined ? settings.controlCenterShowAudioIcon : true
-                controlCenterWidgets = settings.controlCenterWidgets !== undefined ? settings.controlCenterWidgets : [
-                    {"id": "volumeSlider", "enabled": true, "width": 50},
-                    {"id": "brightnessSlider", "enabled": true, "width": 50},
-                    {"id": "wifi", "enabled": true, "width": 50},
-                    {"id": "bluetooth", "enabled": true, "width": 50},
-                    {"id": "audioOutput", "enabled": true, "width": 50},
-                    {"id": "audioInput", "enabled": true, "width": 50},
-                    {"id": "nightMode", "enabled": true, "width": 50},
-                    {"id": "darkMode", "enabled": true, "width": 50}
-                ]
+                controlCenterWidgets = settings.controlCenterWidgets !== undefined
+                        ? sanitizeControlCenterWidgets(settings.controlCenterWidgets)
+                        : defaultControlCenterWidgets()
                 showWorkspaceIndex = settings.showWorkspaceIndex !== undefined ? settings.showWorkspaceIndex : false
                 showWorkspacePadding = settings.showWorkspacePadding !== undefined ? settings.showWorkspacePadding : false
+                workspacePaddingSlots = settings.workspacePaddingSlots !== undefined ? settings.workspacePaddingSlots : 3
                 showWorkspaceApps = settings.showWorkspaceApps !== undefined ? settings.showWorkspaceApps : false
                 maxWorkspaceIcons = settings.maxWorkspaceIcons !== undefined ? settings.maxWorkspaceIcons : 3
                 workspaceNameIcons = settings.workspaceNameIcons !== undefined ? settings.workspaceNameIcons : ({})
@@ -270,18 +295,19 @@ Singleton {
                 if (settings.dankBarWidgetOrder || settings.topBarWidgetOrder) {
                     var widgetOrder = settings.dankBarWidgetOrder || settings.topBarWidgetOrder
                     dankBarLeftWidgets = widgetOrder.filter(w => {
-                                                                              return ["launcherButton", "workspaceSwitcher", "focusedWindow"].includes(w)
-                                                                          })
+                                                                return ["launcherButton", "workspaceSwitcher", "focusedWindow"].includes(w)
+                                                            })
                     dankBarCenterWidgets = widgetOrder.filter(w => {
-                                                                                return ["clock", "music", "weather"].includes(w)
-                                                                            })
+                                                                  return ["clock", "music", "weather"].includes(w)
+                                                              })
                     dankBarRightWidgets = widgetOrder.filter(w => {
-                                                                               return ["systemTray", "clipboard", "systemResources", "notificationButton", "battery", "controlCenterButton"].includes(w)
-                                                                           })
+                                                                 return ["systemTray", "clipboard", "systemResources", "notificationButton", "battery", "controlCenterButton"].includes(w)
+                                                             })
                 } else {
                     var leftWidgets = settings.dankBarLeftWidgets !== undefined ? settings.dankBarLeftWidgets : (settings.topBarLeftWidgets !== undefined ? settings.topBarLeftWidgets : ["launcherButton", "workspaceSwitcher", "focusedWindow"])
                     var centerWidgets = settings.dankBarCenterWidgets !== undefined ? settings.dankBarCenterWidgets : (settings.topBarCenterWidgets !== undefined ? settings.topBarCenterWidgets : ["music", "clock", "weather"])
-                    var rightWidgets = settings.dankBarRightWidgets !== undefined ? settings.dankBarRightWidgets : (settings.topBarRightWidgets !== undefined ? settings.topBarRightWidgets : ["systemTray", "clipboard", "cpuUsage", "memUsage", "notificationButton", "battery", "controlCenterButton"])
+                    var rightWidgets = settings.dankBarRightWidgets
+                            !== undefined ? settings.dankBarRightWidgets : (settings.topBarRightWidgets !== undefined ? settings.topBarRightWidgets : ["systemTray", "clipboard", "cpuUsage", "memUsage", "notificationButton", "battery", "controlCenterButton"])
                     dankBarLeftWidgets = leftWidgets
                     dankBarCenterWidgets = centerWidgets
                     dankBarRightWidgets = rightWidgets
@@ -293,12 +319,12 @@ Singleton {
                 spotlightModalViewMode = settings.spotlightModalViewMode !== undefined ? settings.spotlightModalViewMode : "list"
                 networkPreference = settings.networkPreference !== undefined ? settings.networkPreference : "auto"
                 iconTheme = settings.iconTheme !== undefined ? settings.iconTheme : "System Default"
+                omarchyTheme = settings.omarchyTheme !== undefined ? settings.omarchyTheme : ""
                 useOSLogo = settings.useOSLogo !== undefined ? settings.useOSLogo : false
                 osLogoColorOverride = settings.osLogoColorOverride !== undefined ? settings.osLogoColorOverride : ""
                 osLogoBrightness = settings.osLogoBrightness !== undefined ? settings.osLogoBrightness : 0.5
                 osLogoContrast = settings.osLogoContrast !== undefined ? settings.osLogoContrast : 1
->>>>>>> upstream/master
-                monoFontFamily = settings.monoFontFamily !== undefined ? settings.monoFontFamily : defaultMonoFontFamily
+                fontFamily = settings.fontFamily !== undefined ? settings.fontFamily : defaultFontFamily
                 fontWeight = settings.fontWeight !== undefined ? settings.fontWeight : Font.Normal
                 fontScale = settings.fontScale !== undefined ? settings.fontScale : 1.0
                 notepadUseMonospace = settings.notepadUseMonospace !== undefined ? settings.notepadUseMonospace : true
@@ -312,8 +338,12 @@ Singleton {
                 showDock = settings.showDock !== undefined ? settings.showDock : false
                 dockAutoHide = settings.dockAutoHide !== undefined ? settings.dockAutoHide : false
                 dockGroupByApp = settings.dockGroupByApp !== undefined ? settings.dockGroupByApp : false
+                dockPosition = settings.dockPosition !== undefined ? settings.dockPosition : SettingsData.Position.Bottom
+                dockSpacing = settings.dockSpacing !== undefined ? settings.dockSpacing : 4
+                dockBottomGap = settings.dockBottomGap !== undefined ? settings.dockBottomGap : 0
                 cornerRadius = settings.cornerRadius !== undefined ? settings.cornerRadius : 12
                 notificationOverlayEnabled = settings.notificationOverlayEnabled !== undefined ? settings.notificationOverlayEnabled : false
+                homeAssistantEnabled = settings.homeAssistantEnabled !== undefined ? settings.homeAssistantEnabled : false
                 dankBarAutoHide = settings.dankBarAutoHide !== undefined ? settings.dankBarAutoHide : (settings.topBarAutoHide !== undefined ? settings.topBarAutoHide : false)
                 dankBarOpenOnOverview = settings.dankBarOpenOnOverview !== undefined ? settings.dankBarOpenOnOverview : (settings.topBarOpenOnOverview !== undefined ? settings.topBarOpenOnOverview : false)
                 dankBarVisible = settings.dankBarVisible !== undefined ? settings.dankBarVisible : (settings.topBarVisible !== undefined ? settings.topBarVisible : true)
@@ -389,6 +419,7 @@ Singleton {
                                                 "controlCenterWidgets": controlCenterWidgets,
                                                 "showWorkspaceIndex": showWorkspaceIndex,
                                                 "showWorkspacePadding": showWorkspacePadding,
+                                                "workspacePaddingSlots": workspacePaddingSlots,
                                                 "showWorkspaceApps": showWorkspaceApps,
                                                 "maxWorkspaceIcons": maxWorkspaceIcons,
                                                 "workspacesPerMonitor": workspacesPerMonitor,
@@ -408,13 +439,11 @@ Singleton {
                                                 "spotlightModalViewMode": spotlightModalViewMode,
                                                 "networkPreference": networkPreference,
                                                 "iconTheme": iconTheme,
+                                                "omarchyTheme": omarchyTheme,
                                                 "useOSLogo": useOSLogo,
                                                 "osLogoColorOverride": osLogoColorOverride,
                                                 "osLogoBrightness": osLogoBrightness,
                                                 "osLogoContrast": osLogoContrast,
->>>>>>> upstream/master,
-                                                "monoFontFamily": monoFontFamily,
-                                                "fontWeight": fontWeight,
                                                 "fontScale": fontScale,
                                                 "notepadUseMonospace": notepadUseMonospace,
                                                 "notepadFontFamily": notepadFontFamily,
@@ -428,8 +457,12 @@ Singleton {
                                                 "dockAutoHide": dockAutoHide,
                                                 "dockGroupByApp": dockGroupByApp,
                                                 "dockOpenOnOverview": dockOpenOnOverview,
+                                                "dockPosition": dockPosition,
+                                                "dockSpacing": dockSpacing,
+                                                "dockBottomGap": dockBottomGap,
                                                 "cornerRadius": cornerRadius,
                                                 "notificationOverlayEnabled": notificationOverlayEnabled,
+                                                "homeAssistantEnabled": homeAssistantEnabled,
                                                 "dankBarAutoHide": dankBarAutoHide,
                                                 "dankBarOpenOnOverview": dankBarOpenOnOverview,
                                                 "dankBarVisible": dankBarVisible,
@@ -458,6 +491,16 @@ Singleton {
 
     function setShowWorkspacePadding(enabled) {
         showWorkspacePadding = enabled
+        saveSettings()
+    }
+
+    function setWorkspacePaddingSlots(count) {
+        const parsed = Number(count)
+        const normalized = isNaN(parsed) ? workspacePaddingSlots : Math.max(1, Math.min(30, Math.round(parsed)))
+        if (workspacePaddingSlots === normalized) {
+            return
+        }
+        workspacePaddingSlots = normalized
         saveSettings()
     }
 
@@ -730,8 +773,90 @@ Singleton {
         controlCenterShowAudioIcon = enabled
         saveSettings()
     }
+
+    function defaultControlCenterWidgets() {
+        return [{
+                "id": "volumeSlider",
+                "enabled": true,
+                "width": 50
+            }, {
+                "id": "brightnessSlider",
+                "enabled": true,
+                "width": 50
+            }, {
+                "id": "wifi",
+                "enabled": true,
+                "width": 50
+            }, {
+                "id": "bluetooth",
+                "enabled": true,
+                "width": 50
+            }, {
+                "id": "audioOutput",
+                "enabled": true,
+                "width": 50
+            }, {
+                "id": "audioInput",
+                "enabled": true,
+                "width": 50
+            }, {
+                "id": "doNotDisturb",
+                "enabled": true,
+                "width": 50
+            }, {
+                "id": "idleInhibitor",
+                "enabled": true,
+                "width": 50
+            }, {
+                "id": "battery",
+                "enabled": true,
+                "width": 50
+            }]
+    }
+
+    function sanitizeControlCenterWidgets(widgets) {
+        var explicitEmpty = Array.isArray(widgets) && widgets.length === 0
+        var source = Array.isArray(widgets) ? widgets : defaultControlCenterWidgets()
+        var sanitized = []
+        var seen = ({})
+
+        for (var i = 0; i < source.length; i++) {
+            var raw = source[i]
+            if (!raw || !raw.id)
+                continue
+            if (controlCenterLegacyWidgetIds.indexOf(raw.id) !== -1)
+                continue
+            if (controlCenterAllowedWidgetIds.indexOf(raw.id) === -1)
+                continue
+
+            var key = raw.id
+            if (raw.id === "diskUsage")
+                key += ":" + (raw.instanceId !== undefined ? raw.instanceId : "")
+
+            if (seen[key])
+                continue
+            seen[key] = true
+
+            var widget = {
+                "id": raw.id,
+                "enabled": raw.enabled !== undefined ? raw.enabled : true,
+                "width": raw.width !== undefined ? raw.width : 50
+            }
+            if (raw.mountPath !== undefined)
+                widget.mountPath = raw.mountPath
+            if (raw.instanceId !== undefined)
+                widget.instanceId = raw.instanceId
+            sanitized.push(widget)
+        }
+
+        if (sanitized.length === 0)
+            return explicitEmpty ? [] : defaultControlCenterWidgets()
+
+        return sanitized
+    }
+
     function setControlCenterWidgets(widgets) {
-        controlCenterWidgets = widgets
+        controlCenterWidgets = sanitizeControlCenterWidgets(widgets)
         saveSettings()
     }
 
@@ -890,9 +1015,11 @@ Singleton {
             return
         }
         var script = "mkdir -p " + _configDir + "/qt5ct " + _configDir + "/qt6ct " + _configDir + "/environment.d 2>/dev/null || true\n" + "update_qt_icon_theme() {\n" + "  local config_file=\"$1\"\n"
-                + "  local theme_name=\"$2\"\n" + "  if [ -f \"$config_file\" ]; then\n" + "    if grep -q '^\\[Appearance\\]' \"$config_file\"; then\n" + "      if grep -q '^icon_theme=' \"$config_file\"; then\n" + "        sed -i \"s/^icon_theme=.*/icon_theme=$theme_name/\" \"$config_file\"\n" + "      else\n" + "        sed -i \"/^\\[Appearance\\]/a icon_theme=$theme_name\" \"$config_file\"\n" + "      fi\n"
-                + "    else\n" + "      printf '\\n[Appearance]\\nicon_theme=%s\\n' \"$theme_name\" >> \"$config_file\"\n" + "    fi\n" + "  else\n" + "    printf '[Appearance]\\nicon_theme=%s\\n' \"$theme_name\" > \"$config_file\"\n" + "  fi\n" + "}\n" + "update_qt_icon_theme " + _configDir + "/qt5ct/qt5ct.conf " + _shq(
-                    qtThemeName) + "\n" + "update_qt_icon_theme " + _configDir + "/qt6ct/qt6ct.conf " + _shq(qtThemeName) + "\n" + "rm -rf " + home + "/.cache/icon-cache " + home + "/.cache/thumbnails 2>/dev/null || true\n"
+                + "  local theme_name=\"$2\"\n" + "  if [ -f \"$config_file\" ]; then\n" + "    if grep -q '^\\[Appearance\\]' \"$config_file\"; then\n" + "      if grep -q '^icon_theme=' \"$config_file\"; then\n"
+                + "        sed -i \"s/^icon_theme=.*/icon_theme=$theme_name/\" \"$config_file\"\n" + "      else\n" + "        sed -i \"/^\\[Appearance\\]/a icon_theme=$theme_name\" \"$config_file\"\n" + "      fi\n"
+                + "    else\n" + "      printf '\\n[Appearance]\\nicon_theme=%s\\n' \"$theme_name\" >> \"$config_file\"\n" + "    fi\n" + "  else\n"
+                + "    printf '[Appearance]\\nicon_theme=%s\\n' \"$theme_name\" > \"$config_file\"\n" + "  fi\n" + "}\n" + "update_qt_icon_theme " + _configDir + "/qt5ct/qt5ct.conf " + _shq(qtThemeName)
+                + "\n" + "update_qt_icon_theme " + _configDir + "/qt6ct/qt6ct.conf " + _shq(qtThemeName) + "\n" + "rm -rf " + home + "/.cache/icon-cache " + home + "/.cache/thumbnails 2>/dev/null || true\n"
         Quickshell.execDetached(["sh", "-lc", script])
     }
 
@@ -921,24 +1048,12 @@ Singleton {
         saveSettings()
     }
 
-<<<<<<< HEAD
-    function setWallpaperDynamicTheming(enabled) {
-        wallpaperDynamicTheming = enabled
+    // Optional: allow UI/IPC to record a selected Omarchy theme name
+    function setOmarchyTheme(themeName) {
+        omarchyTheme = themeName || ""
         saveSettings()
     }
 
-    function setThemeSource(source) {
-        themeSource = source
-        saveSettings()
-    }
-
-    function setOmarchyTheme(theme) {
-        omarchyTheme = theme
-        saveSettings()
-    }
-
-=======
->>>>>>> upstream/master
     function setFontFamily(family) {
         fontFamily = family
         saveSettings()
@@ -977,7 +1092,7 @@ Singleton {
 
     function setShowDock(enabled) {
         showDock = enabled
-        if (enabled && dankBarAtBottom) {
+        if (enabled && dankBarAtBottom && dockPosition === SettingsData.Position.Bottom) {
             setDankBarAtBottom(false)
         }
         saveSettings()
@@ -1075,9 +1190,36 @@ Singleton {
 
     function setDankBarAtBottom(enabled) {
         dankBarAtBottom = enabled
-        if (enabled && showDock) {
-            setShowDock(false)
+        if (enabled && showDock && dockPosition === SettingsData.Position.Bottom) {
+            setDockPosition(SettingsData.Position.Top)
         }
+        if (!enabled && showDock && dockPosition === SettingsData.Position.Top) {
+            setDockPosition(SettingsData.Position.Bottom)
+        }
+        saveSettings()
+    }
+
+    function setDockPosition(position) {
+        dockPosition = position
+        if (position === SettingsData.Position.Bottom && dankBarAtBottom && showDock) {
+            setDankBarAtBottom(false)
+        }
+        if (position === SettingsData.Position.Top && !dankBarAtBottom && showDock) {
+            setDankBarAtBottom(true)
+        }
+        saveSettings()
+        Qt.callLater(() => forceDockLayoutRefresh())
+    }
+    function setDockSpacing(spacing) {
+        dockSpacing = spacing
+        saveSettings()
+    }
+    function setDockBottomGap(gap) {
+        dockBottomGap = gap
+        saveSettings()
+    }
+    function setDockOpenOnOverview(enabled) {
+        dockOpenOnOverview = enabled
         saveSettings()
     }
 
@@ -1151,7 +1293,7 @@ Singleton {
         onTriggered: {
             var availableFonts = Qt.fontFamilies()
             var missingFonts = []
-            if (fontFamily === defaultFontFamily && !availableFonts.includes(defaultFontFamily))
+            if (SettingsData.fontFamily === SettingsData.defaultFontFamily && !availableFonts.includes(SettingsData.defaultFontFamily))
             missingFonts.push(defaultFontFamily)
 
             if (monoFontFamily === defaultMonoFontFamily && !availableFonts.includes(defaultMonoFontFamily))
@@ -1273,7 +1415,6 @@ Singleton {
             if (typeof Theme !== "undefined") {
                 Theme.switchTheme(Theme.dynamic)
                 Theme.loadOmarchyColors()
-                Theme.extractColors()
             }
             return "Omarchy theme set to: " + themeName
         }

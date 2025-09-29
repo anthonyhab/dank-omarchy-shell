@@ -121,11 +121,8 @@ Singleton {
     }
 
     function loadOmarchyColors() {
-        if (typeof SettingsData === "undefined" || !SettingsData.omarchyTheme) {
-            return
-        }
-
-        const omarchyPath = homeDir + "/.config/omarchy/themes/" + SettingsData.omarchyTheme + "/dank.colors"
+        // Read from Omarchy's current theme link, similar to pywal integration
+        const omarchyPath = homeDir + "/.config/omarchy/current/theme/dank.colors"
         omarchyFileView.path = omarchyPath
         omarchyFileView.reload()
     }

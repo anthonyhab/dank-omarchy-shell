@@ -142,6 +142,15 @@ Rectangle {
         return Object.values(byApp)
     }
 
+    function configuredPaddingMinimum() {
+        const rawValue = SettingsData.workspacePaddingSlots !== undefined ? SettingsData.workspacePaddingSlots : 3
+        const numericValue = Number(rawValue)
+        if (isNaN(numericValue)) {
+            return 3
+        }
+        return Math.max(1, Math.round(numericValue))
+    }
+
     function padWorkspaces(list) {
         const padded = list.slice()
 
@@ -155,6 +164,7 @@ Rectangle {
                 }
             }
 
+            // Collect existing indices
             padded.forEach(ws => {
                                if (!ws) {
                                    return
@@ -168,15 +178,33 @@ Rectangle {
                                }
                            })
 
-            let highest = 0
+            // Ensure target indices (current, highlight, desired) are present
+            const ensureIndices = []
+            const cur = Number(root.currentWorkspace)
+            const desired = Number(root.desiredWorkspaceTarget)
+            const highlight = Number(root.highlightWorkspaceTarget)
+            if (!isNaN(cur))
+                ensureIndices.push(cur)
+            if (!isNaN(desired))
+                ensureIndices.push(desired)
+            if (!isNaN(highlight))
+                ensureIndices.push(highlight)
+
+            let highestExisting = 0
             numericIds.forEach(value => {
-                                   if (value > highest) {
-                                       highest = value
-                                   }
+                                   if (value > highestExisting)
+                                   highestExisting = value
                                })
 
-            const minimumVisible = 3
-            const targetMax = Math.max(minimumVisible, highest)
+            let highestEnsure = 0
+            ensureIndices.forEach(value => {
+                                      const clamped = Math.max(1, Math.min(root.maxWorkspaceIndex, value))
+                                      if (clamped > highestEnsure)
+                                      highestEnsure = clamped
+                                  })
+
+            const minimumVisible = configuredPaddingMinimum()
+            const targetMax = Math.max(minimumVisible, highestExisting, highestEnsure)
 
             for (var idx = 1; idx <= targetMax; idx++) {
                 if (numericIds.has(idx)) {
@@ -193,7 +221,22 @@ Rectangle {
 
             padded.sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b))
         } else {
-            while (padded.length < 3) {
+            // Niri: ensure at least current and target indices are representable
+            const ensureIndices = []
+            const cur = Number(root.currentWorkspace)
+            const desired = Number(root.desiredWorkspaceTarget)
+            const highlight = Number(root.highlightWorkspaceTarget)
+            if (!isNaN(cur))
+                ensureIndices.push(cur)
+            if (!isNaN(desired))
+                ensureIndices.push(desired)
+            if (!isNaN(highlight))
+                ensureIndices.push(highlight)
+
+            const ensureMax = ensureIndices.length > 0 ? Math.max.apply(null, ensureIndices.map(v => Math.max(1, Math.min(root.maxWorkspaceIndex, v)))) : 0
+            const minimumVisible = configuredPaddingMinimum()
+            let targetLen = Math.max(minimumVisible, Math.max(ensureMax, padded.length))
+            while (padded.length < targetLen) {
                 padded.push(-1)
             }
         }
@@ -256,57 +299,8 @@ Rectangle {
         }
 
         const monitorWorkspaces = workspaces.filter(ws => {
-<<<<<<< HEAD:Modules/TopBar/WorkspaceSwitcher.qml
-                                                        if (!ws) {
-                                                            return false
-                                                        }
-
-                                                        const normalizedId = normalizeWorkspaceId(ws.id, ws.name)
-                                                        if (assignedIds.includes(normalizedId)) {
-                                                            return true
-                                                        }
-
-                                                        if (ws.lastIpcObject) {
-                                                            if (ws.lastIpcObject.monitor === monitorName) {
-                                                                return true
-                                                            }
-                                                            if (monitorId !== undefined && ws.lastIpcObject.monitorID === monitorId) {
-                                                                return true
-                                                            }
-                                                        }
-
-                                                        if (ws.monitor) {
-                                                            if (typeof ws.monitor === "string" && ws.monitor === monitorName) {
-                                                                return true
-                                                            }
-                                                            if (ws.monitor.name && ws.monitor.name === monitorName) {
-                                                                return true
-                                                            }
-                                                            if (monitor && ws.monitor === monitor) {
-                                                                return true
-                                                            }
-                                                            if (monitorId !== undefined && ws.monitor.id !== undefined && ws.monitor.id === monitorId) {
-                                                                return true
-                                                            }
-                                                        }
-
-                                                        if (monitorId !== undefined && ws.monitorID !== undefined && ws.monitorID === monitorId) {
-                                                            return true
-                                                        }
-
-                                                        return false
+                                                        return ws.lastIpcObject && ws.lastIpcObject.monitor === root.screenName
                                                     })
-
-        if (monitorWorkspaces.length === 0 && assignedIds.length > 0) {
-            // Create lightweight placeholders for assigned workspaces that aren't in the IPC list yet
-            return assignedIds.map(id => ({
-                                              "id": id,
-                                              "name": String(id),
-                                              "persistent": true
-                                          }))
-=======
-            return ws.lastIpcObject && ws.lastIpcObject.monitor === root.screenName
-        })
 
         if (monitorWorkspaces.length === 0) {
             // Fallback if no workspaces exist for this monitor
@@ -314,7 +308,6 @@ Rectangle {
                         "id": 1,
                         "name": "1"
                     }]
->>>>>>> upstream/master:Modules/DankBar/WorkspaceSwitcher.qml
         }
 
         let sorted = monitorWorkspaces.slice().sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b))
@@ -356,24 +349,329 @@ Rectangle {
     }
 
     function getHyprlandActiveWorkspace() {
-        if (!root.screenName || !SettingsData.workspacesPerMonitor) {
-            const focused = Hyprland.focusedWorkspace
-            return focused ? normalizeWorkspaceId(focused.id, focused.name) : 1
-        }
+        let candidate = null
 
-        // Find the monitor object for this screen
         const monitors = Hyprland.monitors?.values || []
-        const currentMonitor = monitors.find(monitor => monitor.name === root.screenName)
-
-        if (!currentMonitor) {
-            return 1
+        if (root.screenName && monitors.length > 0) {
+            const currentMonitor = monitors.find(monitor => monitor && monitor.name === root.screenName)
+            if (currentMonitor) {
+                const monitorWorkspace = normalizeWorkspaceId(currentMonitor.activeWorkspace?.id, currentMonitor.activeWorkspace?.name)
+                if (monitorWorkspace !== undefined && monitorWorkspace !== null) {
+                    candidate = monitorWorkspace
+                }
+            }
         }
 
-        // Use the monitor's active workspace ID (like original config)
-        return normalizeWorkspaceId(currentMonitor.activeWorkspace?.id, currentMonitor.activeWorkspace?.name) ?? 1
+        if (candidate === null || candidate === undefined) {
+            const focused = Hyprland.focusedWorkspace
+            if (focused) {
+                const focusedWorkspace = normalizeWorkspaceId(focused.id, focused.name)
+                if (focusedWorkspace !== undefined && focusedWorkspace !== null) {
+                    candidate = focusedWorkspace
+                }
+            }
+        }
+
+        if (candidate === null || candidate === undefined) {
+            candidate = hyprlandWorkspaceCache
+        }
+
+        if (candidate === null || candidate === undefined) {
+            candidate = 1
+        }
+
+        return candidate
     }
 
     readonly property real padding: (widgetHeight - workspaceRow.implicitHeight) / 2
+    property int maxWorkspaceIndex: Math.max(10, configuredPaddingMinimum())
+    property var desiredWorkspaceTarget: null
+    property var highlightWorkspaceTarget: currentWorkspace
+    property var hyprlandWorkspaceCache: 1
+    property int lastHighlightIndex: -1
+
+    Timer {
+        id: highlightUpdateTimer
+        interval: 0
+        repeat: false
+        onTriggered: root._applyHighlightGeometry()
+    }
+
+    function scheduleHighlightUpdate() {
+        highlightUpdateTimer.restart()
+    }
+
+    function resolveWorkspaceTarget(target, clampToLimit) {
+        if (target === undefined || target === null || target === "") {
+            return null
+        }
+
+        const numericTarget = Number(target)
+        if (!isNaN(numericTarget)) {
+            let value = Math.round(numericTarget)
+            if (clampToLimit) {
+                value = Math.max(1, Math.min(root.maxWorkspaceIndex, value))
+            }
+            return value
+        }
+
+        return target
+    }
+
+    function setDesiredWorkspaceTarget(target, clampToLimit) {
+        desiredWorkspaceTarget = resolveWorkspaceTarget(target, clampToLimit)
+        syncHighlightTarget()
+    }
+
+    function clearDesiredWorkspaceTarget() {
+        desiredWorkspaceTarget = null
+        syncHighlightTarget()
+    }
+
+    function syncHighlightTarget() {
+        const desired = desiredWorkspaceTarget
+        const resolved = desired !== null && desired !== undefined ? desired : root.currentWorkspace
+        if (highlightWorkspaceTarget !== resolved) {
+            highlightWorkspaceTarget = resolved
+        }
+        scheduleHighlightUpdate()
+    }
+
+    function updateActiveHighlight() {
+        scheduleHighlightUpdate()
+    }
+
+    function getHyprlandWorkspaceIdentifier(entry) {
+        if (!entry) {
+            return null
+        }
+
+        if (entry.id !== undefined && entry.id !== -1) {
+            return normalizeWorkspaceId(entry.id, entry.name)
+        }
+
+        if (entry.displayIndex !== undefined && entry.displayIndex !== null) {
+            return entry.displayIndex
+        }
+
+        if (entry.name !== undefined && entry.name !== null) {
+            const numericName = Number(entry.name)
+            if (!isNaN(numericName)) {
+                return numericName
+            }
+            return entry.name
+        }
+
+        return null
+    }
+
+    function hyprlandWorkspaceMatches(entry, target) {
+        if (!entry || target === undefined || target === null) {
+            return false
+        }
+
+        const identifier = getHyprlandWorkspaceIdentifier(entry)
+        if (identifier === null || identifier === undefined) {
+            return false
+        }
+
+        const numericTarget = Number(target)
+        const numericIdentifier = Number(identifier)
+
+        if (!isNaN(numericTarget) && !isNaN(numericIdentifier)) {
+            if (numericIdentifier === numericTarget) {
+                return true
+            }
+        }
+
+        if (identifier === target) {
+            return true
+        }
+
+        return String(identifier) === String(target)
+    }
+
+    function isHyprlandActiveWorkspace(entry) {
+        if (!entry) {
+            return false
+        }
+
+        return hyprlandWorkspaceMatches(entry, root.currentWorkspace)
+    }
+
+    function workspaceEntryMatchesTarget(entry, target) {
+        if (target === undefined || target === null) {
+            return false
+        }
+
+        if (CompositorService.isHyprland) {
+            return hyprlandWorkspaceMatches(entry, target)
+        }
+
+        if (entry === undefined || entry === null) {
+            return false
+        }
+
+        const numericTarget = Number(target)
+        const numericEntry = Number(entry)
+
+        if (!isNaN(numericTarget) && !isNaN(numericEntry)) {
+            return numericEntry === numericTarget
+        }
+
+        return entry === target
+    }
+
+    function workspaceSlotHeight() {
+        return SettingsData.showWorkspaceApps ? widgetHeight * 0.8 : widgetHeight * 0.6
+    }
+
+    function workspaceSlotWidth(entry) {
+        if (!SettingsData.showWorkspaceApps) {
+            return widgetHeight * 1.2
+        }
+
+        const iconTarget = CompositorService.isHyprland ? entry : (entry === -1 ? null : entry)
+        const icons = root.getWorkspaceIcons(iconTarget) || []
+        const numIcons = Math.min(icons.length, SettingsData.maxWorkspaceIcons)
+        const iconsWidth = numIcons * 18 + (numIcons > 0 ? (numIcons - 1) * Theme.spacingXS : 0)
+        const baseWidth = widgetHeight * 1.0 + Theme.spacingXS
+        return baseWidth + iconsWidth
+    }
+
+    function predictedGeometryForIndex(index) {
+        const list = root.workspaceList || []
+        if (index < 0 || index >= list.length) {
+            return null
+        }
+
+        const rowTopLeft = workspaceRow.mapToItem(root, 0, 0)
+        const spacing = workspaceRow.spacing || 0
+        let x = rowTopLeft.x
+
+        for (var i = 0; i < index; ++i) {
+            const entry = list[i]
+            const delegate = workspaceRepeater && workspaceRepeater.itemAt ? workspaceRepeater.itemAt(i) : null
+            const width = delegate ? delegate.width : workspaceSlotWidth(entry)
+            x += width + spacing
+        }
+
+        const entry = list[index]
+        const delegate = workspaceRepeater && workspaceRepeater.itemAt ? workspaceRepeater.itemAt(index) : null
+        const slotWidth = delegate ? delegate.width : workspaceSlotWidth(entry)
+        const slotHeight = delegate ? delegate.height : workspaceSlotHeight()
+        const rowHeight = workspaceRow.height > 0 ? workspaceRow.height : workspaceRow.implicitHeight
+        const baseHeight = rowHeight > 0 ? rowHeight : slotHeight
+        const yOffset = Math.max(0, (baseHeight - slotHeight) / 2)
+        const y = rowTopLeft.y + yOffset
+
+        return {
+            "x": x,
+            "y": y,
+            "width": slotWidth,
+            "height": slotHeight
+        }
+    }
+
+    function workspaceIndexForTarget(target) {
+        if (target === undefined || target === null) {
+            return -1
+        }
+
+        const list = root.workspaceList || []
+        for (var i = 0; i < list.length; ++i) {
+            if (workspaceEntryMatchesTarget(list[i], target)) {
+                return i
+            }
+        }
+
+        return -1
+    }
+
+    function delegateInfoForTarget(target) {
+        const index = workspaceIndexForTarget(target)
+        if (index < 0) {
+            return {
+                "index": -1,
+                "delegate": null
+            }
+        }
+
+        if (!workspaceRepeater || !workspaceRepeater.itemAt) {
+            return {
+                "index": index,
+                "delegate": null
+            }
+        }
+
+        const delegate = workspaceRepeater.itemAt(index)
+        if (!delegate) {
+            scheduleHighlightUpdate()
+        }
+
+        return {
+            "index": index,
+            "delegate": delegate
+        }
+    }
+
+    function _applyHighlightGeometry() {
+        const targetInfo = delegateInfoForTarget(highlightWorkspaceTarget)
+        var activeDelegate = targetInfo.delegate
+        var activeIndex = targetInfo.index
+
+        // If the target is not present in the model yet, avoid snapping
+        // back to the current workspace. Keep the previous highlight until
+        // the model updates (onWorkspaceListChanged schedules another pass).
+        if (activeIndex < 0) {
+            return
+        }
+
+        if (!activeDelegate && targetInfo.index >= 0) {
+            const predicted = predictedGeometryForIndex(targetInfo.index)
+            if (predicted) {
+                activeHighlight.visible = true
+                activeHighlight.width = predicted.width
+                activeHighlight.height = predicted.height
+                activeHighlight.x = predicted.x
+                activeHighlight.y = predicted.y
+                activeHighlight.radius = Math.min(Theme.cornerRadius, predicted.height / 2)
+                lastHighlightIndex = targetInfo.index
+                return
+            }
+        }
+
+        if (!activeDelegate) {
+            const currentInfo = delegateInfoForTarget(root.currentWorkspace)
+            activeDelegate = currentInfo.delegate
+            activeIndex = currentInfo.index
+        }
+
+        if (!activeDelegate && lastHighlightIndex >= 0 && workspaceRepeater && workspaceRepeater.itemAt) {
+            const fallbackDelegate = workspaceRepeater.itemAt(lastHighlightIndex)
+            if (fallbackDelegate) {
+                activeDelegate = fallbackDelegate
+                activeIndex = lastHighlightIndex
+            }
+        }
+
+        if (!activeDelegate) {
+            if (targetInfo.index === -1 && lastHighlightIndex === -1) {
+                activeHighlight.visible = false
+                lastHighlightIndex = -1
+            }
+            return
+        }
+
+        const topLeft = activeDelegate.mapToItem(root, 0, 0)
+        activeHighlight.visible = true
+        activeHighlight.width = activeDelegate.width
+        activeHighlight.height = activeDelegate.height
+        activeHighlight.x = topLeft.x
+        activeHighlight.y = topLeft.y
+        activeHighlight.radius = Math.min(Theme.cornerRadius, activeHighlight.height / 2)
+        lastHighlightIndex = activeIndex
+    }
 
     function getRealWorkspaces() {
         return root.workspaceList.filter(ws => {
@@ -382,6 +680,40 @@ Rectangle {
                                              }
                                              return ws !== -1
                                          })
+    }
+
+    function nextHyprlandTarget(direction) {
+        const cur = Number(root.currentWorkspace)
+        if (isNaN(cur)) {
+            return null
+        }
+
+        const next = cur + (direction > 0 ? 1 : -1)
+        if (next < 1 || next > root.maxWorkspaceIndex) {
+            return null
+        }
+
+        return next
+    }
+
+    function performHyprlandSwitch(target, clampToLimit, highlightOverride) {
+        const resolvedCommand = resolveWorkspaceTarget(target, clampToLimit)
+        const highlightValue = highlightOverride !== undefined && highlightOverride !== null ? resolveWorkspaceTarget(highlightOverride, clampToLimit) : resolvedCommand
+
+        if (highlightValue === null || highlightValue === undefined) {
+            return
+        }
+
+        const highlightUnchanged = (highlightValue === root.currentWorkspace && desiredWorkspaceTarget === null)
+        const commandUnavailable = resolvedCommand === null || resolvedCommand === undefined
+
+        setDesiredWorkspaceTarget(highlightValue, clampToLimit)
+
+        if (highlightUnchanged || commandUnavailable) {
+            return
+        }
+
+        Hyprland.dispatch(`workspace ${resolvedCommand}`)
     }
 
     function switchWorkspace(direction) {
@@ -397,8 +729,8 @@ Rectangle {
 
             NiriService.switchToWorkspace(realWorkspaces[nextIndex] - 1)
         } else if (CompositorService.isHyprland) {
-            const command = direction > 0 ? "workspace r+1" : "workspace r-1"
-            Hyprland.dispatch(command)
+            const target = nextHyprlandTarget(direction)
+            performHyprlandSwitch(target, true)
         }
     }
 
@@ -412,6 +744,35 @@ Rectangle {
         return Qt.rgba(baseColor.r, baseColor.g, baseColor.b, baseColor.a * Theme.widgetTransparency)
     }
     visible: CompositorService.isNiri || CompositorService.isHyprland
+    clip: true
+    onCurrentWorkspaceChanged: {
+        if (CompositorService.isHyprland && root.currentWorkspace !== undefined && root.currentWorkspace !== null) {
+            if (hyprlandWorkspaceCache !== root.currentWorkspace) {
+                hyprlandWorkspaceCache = root.currentWorkspace
+            }
+        }
+        if (desiredWorkspaceTarget !== null && desiredWorkspaceTarget !== undefined) {
+            const desiredNumeric = Number(desiredWorkspaceTarget)
+            const currentNumeric = Number(root.currentWorkspace)
+
+            if ((!isNaN(desiredNumeric) && !isNaN(currentNumeric) && desiredNumeric === currentNumeric) || desiredWorkspaceTarget === root.currentWorkspace) {
+                clearDesiredWorkspaceTarget()
+            } else {
+                syncHighlightTarget()
+            }
+        } else {
+            syncHighlightTarget()
+        }
+    }
+    onWidgetHeightChanged: updateActiveHighlight()
+    onWorkspaceListChanged: updateActiveHighlight()
+    onScreenNameChanged: updateActiveHighlight()
+    Component.onCompleted: {
+        hyprlandWorkspaceCache = root.currentWorkspace
+        highlightWorkspaceTarget = root.currentWorkspace
+        syncHighlightTarget()
+        updateActiveHighlight()
+    }
 
     MouseArea {
         anchors.fill: parent
@@ -442,28 +803,62 @@ Rectangle {
                  }
     }
 
+    Rectangle {
+        id: activeHighlight
+
+        z: 0
+        visible: false
+        color: Theme.primary
+        radius: Math.min(Theme.cornerRadius, height / 2)
+        antialiasing: true
+
+        Behavior on x {
+            NumberAnimation {
+                duration: Theme.mediumDuration
+                easing.type: Theme.emphasizedEasing
+            }
+        }
+
+        Behavior on y {
+            NumberAnimation {
+                duration: Theme.mediumDuration
+                easing.type: Theme.emphasizedEasing
+            }
+        }
+
+        Behavior on width {
+            NumberAnimation {
+                duration: Theme.mediumDuration
+                easing.type: Theme.emphasizedEasing
+            }
+        }
+
+        Behavior on height {
+            NumberAnimation {
+                duration: Theme.mediumDuration
+                easing.type: Theme.emphasizedEasing
+            }
+        }
+    }
+
     Row {
         id: workspaceRow
 
         anchors.centerIn: parent
         spacing: Theme.spacingS
+        z: 1
 
         Repeater {
+            id: workspaceRepeater
             model: root.workspaceList
+            onItemAdded: root.scheduleHighlightUpdate()
+            onItemRemoved: root.scheduleHighlightUpdate()
 
             Rectangle {
                 id: delegateRoot
 
-                property bool isActive: {
-                    if (CompositorService.isHyprland) {
-                        if (!modelData || modelData.id === -1) {
-                            return false
-                        }
-                        const normalized = normalizeWorkspaceId(modelData.id, modelData.name)
-                        return normalized === root.currentWorkspace
-                    }
-                    return modelData === root.currentWorkspace
-                }
+                property var workspaceEntry: modelData
+                property bool isActive: CompositorService.isHyprland ? root.isHyprlandActiveWorkspace(modelData) : (modelData === root.currentWorkspace)
                 property bool isPlaceholder: {
                     if (CompositorService.isHyprland) {
                         return modelData && modelData.id === -1
@@ -472,21 +867,10 @@ Rectangle {
                 }
                 property bool isHovered: mouseArea.containsMouse
 
-<<<<<<< HEAD:Modules/TopBar/WorkspaceSwitcher.qml
-                    if (CompositorService.isNiri) {
-                        return NiriService.allWorkspaces.find(ws => ws.idx + 1 === modelData && ws.output === root.screenName) || null
-                    }
-                    return CompositorService.isHyprland ? modelData : null
-                }
-                property var iconData: workspaceData?.name ? SettingsData.getWorkspaceNameIcon(workspaceData.name) : null
-                property bool hasIcon: iconData !== null
-                property var icons: SettingsData.showWorkspaceApps ? root.getWorkspaceIcons(isPlaceholder ? null : (CompositorService.isHyprland ? modelData : modelData)) : []
-=======
                 property var loadedWorkspaceData: null
                 property var loadedIconData: null
                 property bool loadedHasIcon: false
                 property var loadedIcons: []
->>>>>>> upstream/master:Modules/DankBar/WorkspaceSwitcher.qml
 
                 Timer {
                     id: dataUpdateTimer
@@ -500,26 +884,28 @@ Rectangle {
                             return
                         }
 
-                        var wsData = null;
+                        var wsData = null
                         if (CompositorService.isNiri) {
-                            wsData = NiriService.allWorkspaces.find(ws => ws.idx + 1 === modelData && ws.output === root.screenName) || null;
+                            wsData = NiriService.allWorkspaces.find(ws => ws.idx + 1 === modelData && ws.output === root.screenName) || null
                         } else if (CompositorService.isHyprland) {
-                            wsData = modelData;
+                            wsData = modelData
                         }
-                        delegateRoot.loadedWorkspaceData = wsData;
+                        delegateRoot.loadedWorkspaceData = wsData
 
-                        var icData = null;
+                        var icData = null
                         if (wsData?.name) {
-                            icData = SettingsData.getWorkspaceNameIcon(wsData.name);
+                            icData = SettingsData.getWorkspaceNameIcon(wsData.name)
                         }
-                        delegateRoot.loadedIconData = icData;
-                        delegateRoot.loadedHasIcon = icData !== null;
+                        delegateRoot.loadedIconData = icData
+                        delegateRoot.loadedHasIcon = icData !== null
 
                         if (SettingsData.showWorkspaceApps) {
-                            delegateRoot.loadedIcons = root.getWorkspaceIcons(CompositorService.isHyprland ? modelData : (modelData === -1 ? null : modelData));
+                            delegateRoot.loadedIcons = root.getWorkspaceIcons(CompositorService.isHyprland ? modelData : (modelData === -1 ? null : modelData))
                         } else {
-                            delegateRoot.loadedIcons = [];
+                            delegateRoot.loadedIcons = []
                         }
+
+                        root.updateActiveHighlight()
                     }
                 }
 
@@ -529,25 +915,27 @@ Rectangle {
 
                 width: {
                     if (SettingsData.showWorkspaceApps && loadedIcons.length > 0) {
-                        const numIcons = Math.min(loadedIcons.length, SettingsData.maxWorkspaceIcons);
-                        const iconsWidth = numIcons * 18 + (numIcons > 0 ? (numIcons - 1) * Theme.spacingXS : 0);
-                        const baseWidth = isActive ? root.widgetHeight * 1.0 + Theme.spacingXS : root.widgetHeight * 0.8;
-                        return baseWidth + iconsWidth;
+                        const numIcons = Math.min(loadedIcons.length, SettingsData.maxWorkspaceIcons)
+                        const iconsWidth = numIcons * 18 + (numIcons > 0 ? (numIcons - 1) * Theme.spacingXS : 0)
+                        const baseWidth = root.widgetHeight * 1.0 + Theme.spacingXS
+                        return baseWidth + iconsWidth
                     }
-                    return isActive ? root.widgetHeight * 1.2 : root.widgetHeight * 0.8;
+                    // Keep slot width stable to avoid row shifting.
+                    return root.widgetHeight * 1.2
                 }
                 height: SettingsData.showWorkspaceApps ? widgetHeight * 0.8 : widgetHeight * 0.6
-                radius: height / 2
-                color: isActive ? Theme.primary : isPlaceholder ? Theme.surfaceTextLight : isHovered ? Theme.outlineButton : Theme.surfaceTextAlpha
-
-                Behavior on width {
-                    enabled: (!SettingsData.showWorkspaceApps || SettingsData.maxWorkspaceIcons <= 3)
-                    NumberAnimation {
-                        duration: Theme.mediumDuration
-                        easing.type: Theme.emphasizedEasing
+                radius: Math.min(Theme.cornerRadius, height / 2)
+                color: {
+                    if (isActive) {
+                        return "transparent"
                     }
+                    if (isPlaceholder) {
+                        return Theme.surfaceTextLight
+                    }
+                    return isHovered ? Theme.outlineButton : Theme.surfaceTextAlpha
                 }
 
+                // No width animation for slots; stability > flourish here
                 MouseArea {
                     id: mouseArea
 
@@ -563,9 +951,22 @@ Rectangle {
                         if (CompositorService.isNiri) {
                             NiriService.switchToWorkspace(modelData - 1)
                         } else if (CompositorService.isHyprland && modelData?.id !== undefined) {
-                            const target = modelData.name && modelData.name.length > 0 ? modelData.name : modelData.id
-                            Hyprland.dispatch(`workspace ${target}`)
+                            const commandTarget = modelData.name && modelData.name.length > 0 ? modelData.name : modelData.id
+                            const highlightTarget = root.getHyprlandWorkspaceIdentifier(modelData)
+                            root.performHyprlandSwitch(commandTarget, false, highlightTarget)
                         }
+                    }
+                }
+
+                onIsActiveChanged: root.updateActiveHighlight()
+                onWidthChanged: {
+                    if (isActive) {
+                        root.updateActiveHighlight()
+                    }
+                }
+                onHeightChanged: {
+                    if (isActive) {
+                        root.updateActiveHighlight()
                     }
                 }
 
@@ -681,16 +1082,38 @@ Rectangle {
                 Loader {
                     id: indexLoader
                     anchors.fill: parent
-                    active: !isPlaceholder && SettingsData.showWorkspaceIndex && !loadedHasIcon && !SettingsData.showWorkspaceApps
+                    active: SettingsData.showWorkspaceIndex && !SettingsData.showWorkspaceApps && (!loadedHasIcon || isPlaceholder)
                     sourceComponent: Item {
                         StyledText {
                             anchors.centerIn: parent
                             text: {
-                                const isPlaceholder = CompositorService.isHyprland ? (modelData?.id === -1) : (modelData === -1)
                                 if (isPlaceholder) {
+                                    if (CompositorService.isHyprland) {
+                                        if (modelData?.displayIndex !== undefined && modelData.displayIndex !== null) {
+                                            return modelData.displayIndex
+                                        }
+                                    }
                                     return index + 1
                                 }
-                                return CompositorService.isHyprland ? (modelData?.id || "") : (modelData - 1);
+
+                                if (CompositorService.isHyprland) {
+                                    const normalized = root.normalizeWorkspaceId(modelData?.id, modelData?.name)
+                                    if (typeof normalized === "number" && !isNaN(normalized)) {
+                                        return normalized
+                                    }
+                                    if (normalized !== undefined && normalized !== null && normalized !== -1 && normalized !== "") {
+                                        return normalized
+                                    }
+                                    if (modelData?.displayIndex !== undefined && modelData.displayIndex !== null) {
+                                        return modelData.displayIndex
+                                    }
+                                    if (modelData?.name) {
+                                        return modelData.name
+                                    }
+                                    return ""
+                                }
+
+                                return modelData
                             }
                             color: isActive ? Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.95) : isPlaceholder ? Theme.surfaceTextAlpha : Theme.surfaceTextMedium
                             font.pixelSize: Theme.fontSizeSmall
@@ -700,70 +1123,44 @@ Rectangle {
                 }
 
                 // --- LOGIC / TRIGGERS ---
-                Component.onCompleted: updateAllData()
+                Component.onCompleted: {
+                    updateAllData()
+                    root.updateActiveHighlight()
+                }
+                Component.onDestruction: root.updateActiveHighlight()
 
                 Connections {
                     target: CompositorService
-                    function onSortedToplevelsChanged() { delegateRoot.updateAllData() }
+                    function onSortedToplevelsChanged() {
+                        delegateRoot.updateAllData()
+                        root.updateActiveHighlight()
+                    }
                 }
                 Connections {
                     target: NiriService
                     enabled: CompositorService.isNiri
-                    function onAllWorkspacesChanged() { delegateRoot.updateAllData() }
-                }
-<<<<<<< HEAD:Modules/TopBar/WorkspaceSwitcher.qml
-
-                StyledText {
-                    visible: (SettingsData.showWorkspaceIndex && !hasIcon && (!SettingsData.showWorkspaceApps || icons.length === 0))
-                    anchors.centerIn: parent
-                    text: {
-                        const isPlaceholder = CompositorService.isHyprland ? (modelData?.id === -1) : (modelData === -1)
-
-                        if (isPlaceholder) {
-                            if (CompositorService.isHyprland) {
-                                return modelData?.displayIndex !== undefined ? modelData.displayIndex : index + 1
-                            }
-                            return index + 1
-                        }
-
-                        if (CompositorService.isHyprland) {
-                            if (modelData?.displayIndex !== undefined) {
-                                return modelData.displayIndex
-                            }
-                            return modelData?.id || ""
-                        }
-                        return modelData
-                    }
-                    color: isActive ? Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.95) : isPlaceholder ? Theme.surfaceTextAlpha : Theme.surfaceTextMedium
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.weight: (isActive && !isPlaceholder) ? Font.DemiBold : Font.Normal
-                }
-
-                Behavior on width {
-                    // When having more icons, animation becomes clunky
-                    enabled: (!SettingsData.showWorkspaceApps || SettingsData.maxWorkspaceIcons <= 3)
-                    NumberAnimation {
-                        duration: Theme.mediumDuration
-                        easing.type: Theme.emphasizedEasing
+                    function onAllWorkspacesChanged() {
+                        delegateRoot.updateAllData()
+                        root.updateActiveHighlight()
                     }
                 }
-
-                Behavior on color {
-                    // When having more icons, animation becomes clunky
-                    enabled: (!SettingsData.showWorkspaceApps || SettingsData.maxWorkspaceIcons <= 3)
-                    ColorAnimation {
-                        duration: Theme.mediumDuration
-                        easing.type: Theme.emphasizedEasing
-                    }
-                }
-=======
                 Connections {
                     target: SettingsData
-                    function onShowWorkspaceAppsChanged() { delegateRoot.updateAllData() }
-                    function onWorkspaceNameIconsChanged() { delegateRoot.updateAllData() }
+                    function onShowWorkspaceAppsChanged() {
+                        delegateRoot.updateAllData()
+                        root.updateActiveHighlight()
+                    }
+                    function onWorkspaceNameIconsChanged() {
+                        delegateRoot.updateAllData()
+                    }
                 }
->>>>>>> upstream/master:Modules/DankBar/WorkspaceSwitcher.qml
             }
+        }
+    }
+    Connections {
+        target: SettingsData
+        function onCornerRadiusChanged() {
+            root.updateActiveHighlight()
         }
     }
 }

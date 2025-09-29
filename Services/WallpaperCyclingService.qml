@@ -1,5 +1,6 @@
 pragma Singleton
-pragma ComponentBehavior: Bound
+
+pragma ComponentBehavior
 
 import QtQuick
 import Quickshell
@@ -45,11 +46,13 @@ Singleton {
                 onStreamFinished: {
                     if (text && text.trim()) {
                         const files = text.trim().split('\n').filter(file => file.length > 0)
-                        if (files.length <= 1) return
+                        if (files.length <= 1)
+                        return
                         const wallpaperList = files.sort()
                         const currentPath = currentWallpaper
                         let currentIndex = wallpaperList.findIndex(path => path === currentPath)
-                        if (currentIndex === -1) currentIndex = 0
+                        if (currentIndex === -1)
+                        currentIndex = 0
                         let targetIndex
                         if (goToPrevious) {
                             targetIndex = currentIndex === 0 ? wallpaperList.length - 1 : currentIndex - 1
@@ -102,13 +105,17 @@ Singleton {
         function onMonitorCyclingSettingsChanged() {
             updateCyclingState()
         }
+
+        function onWallpaperControlModeChanged() {
+            updateCyclingState()
+        }
     }
 
     function updateCyclingState() {
         if (SessionData.perMonitorWallpaper) {
             stopCycling()
             updatePerMonitorCycling()
-        } else if (SessionData.wallpaperCyclingEnabled && SessionData.wallpaperPath) {
+        } else if (SessionData.wallpaperCyclingEnabled && SessionData.wallpaperPath && !SessionData.wallpaperPath.startsWith("#") && !SessionData.wallpaperPath.startsWith("we:")) {
             startCycling()
             stopAllMonitorCycling()
         } else {
@@ -118,7 +125,8 @@ Singleton {
     }
 
     function updatePerMonitorCycling() {
-        if (typeof Quickshell === "undefined") return
+        if (typeof Quickshell === "undefined")
+            return
 
         var screens = Quickshell.screens
         for (var i = 0; i < screens.length; i++) {
@@ -203,9 +211,14 @@ Singleton {
 
     function cycleToNextWallpaper(screenName, wallpaperPath) {
         const currentWallpaper = wallpaperPath || SessionData.wallpaperPath
-        if (!currentWallpaper) return
+        if (!currentWallpaper || currentWallpaper.startsWith("#") || currentWallpaper.startsWith("we:"))
+            return
 
-        const wallpaperDir = currentWallpaper.substring(0, currentWallpaper.lastIndexOf('/'))
+        const dirIndex = currentWallpaper.lastIndexOf('/')
+        if (dirIndex === -1)
+            return
+
+        const wallpaperDir = currentWallpaper.substring(0, dirIndex)
 
         if (screenName && monitorProcessComponent && monitorProcessComponent.status === Component.Ready) {
             // Use per-monitor process
@@ -235,9 +248,14 @@ Singleton {
 
     function cycleToPrevWallpaper(screenName, wallpaperPath) {
         const currentWallpaper = wallpaperPath || SessionData.wallpaperPath
-        if (!currentWallpaper) return
+        if (!currentWallpaper || currentWallpaper.startsWith("#") || currentWallpaper.startsWith("we:"))
+            return
 
-        const wallpaperDir = currentWallpaper.substring(0, currentWallpaper.lastIndexOf('/'))
+        const dirIndex = currentWallpaper.lastIndexOf('/')
+        if (dirIndex === -1)
+            return
+
+        const wallpaperDir = currentWallpaper.substring(0, dirIndex)
 
         if (screenName && monitorProcessComponent && monitorProcessComponent.status === Component.Ready) {
             // Use per-monitor process (same as next, but with prev flag)
@@ -292,7 +310,8 @@ Singleton {
     }
 
     function cycleNextForMonitor(screenName) {
-        if (!screenName) return
+        if (!screenName)
+            return
 
         var currentWallpaper = SessionData.getMonitorWallpaper(screenName)
         if (currentWallpaper) {
@@ -301,8 +320,9 @@ Singleton {
     }
 
     function cyclePrevForMonitor(screenName) {
-        if (!screenName) return
-        
+        if (!screenName)
+            return
+
         var currentWallpaper = SessionData.getMonitorWallpaper(screenName)
         if (currentWallpaper) {
             cycleToPrevWallpaper(screenName, currentWallpaper)
@@ -325,7 +345,8 @@ Singleton {
     }
 
     function checkPerMonitorTimeBasedCycling(currentTime) {
-        if (typeof Quickshell === "undefined") return
+        if (typeof Quickshell === "undefined")
+            return
 
         var screens = Quickshell.screens
         for (var i = 0; i < screens.length; i++) {
@@ -370,22 +391,24 @@ Singleton {
 
     Process {
         id: cyclingProcess
-        
+
         property string targetScreenName: ""
         property string currentWallpaper: ""
-        
+
         running: false
 
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text && text.trim()) {
                     const files = text.trim().split('\n').filter(file => file.length > 0)
-                    if (files.length <= 1) return
+                    if (files.length <= 1)
+                    return
 
                     const wallpaperList = files.sort()
                     const currentPath = cyclingProcess.currentWallpaper
                     let currentIndex = wallpaperList.findIndex(path => path === currentPath)
-                    if (currentIndex === -1) currentIndex = 0
+                    if (currentIndex === -1)
+                    currentIndex = 0
 
                     const nextIndex = (currentIndex + 1) % wallpaperList.length
                     const nextWallpaper = wallpaperList[nextIndex]
@@ -404,22 +427,24 @@ Singleton {
 
     Process {
         id: prevCyclingProcess
-        
+
         property string targetScreenName: ""
         property string currentWallpaper: ""
-        
+
         running: false
 
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text && text.trim()) {
                     const files = text.trim().split('\n').filter(file => file.length > 0)
-                    if (files.length <= 1) return
+                    if (files.length <= 1)
+                    return
 
                     const wallpaperList = files.sort()
                     const currentPath = prevCyclingProcess.currentWallpaper
                     let currentIndex = wallpaperList.findIndex(path => path === currentPath)
-                    if (currentIndex === -1) currentIndex = 0
+                    if (currentIndex === -1)
+                    currentIndex = 0
 
                     const prevIndex = currentIndex === 0 ? wallpaperList.length - 1 : currentIndex - 1
                     const prevWallpaper = wallpaperList[prevIndex]
@@ -435,5 +460,4 @@ Singleton {
             }
         }
     }
-
 }

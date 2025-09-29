@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell.Widgets
 import qs.Common
+import qs.Services
 import qs.Widgets
 
 Item {
@@ -19,10 +20,10 @@ Item {
             width: parent.width
             spacing: Theme.spacingXL
 
-            // Enable Dock
+            // Dock Position
             StyledRect {
                 width: parent.width
-                height: enableDockSection.implicitHeight + Theme.spacingL * 2
+                height: dockPositionSection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
                 border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
@@ -30,7 +31,7 @@ Item {
                 border.width: 0
 
                 Column {
-                    id: enableDockSection
+                    id: dockPositionSection
 
                     anchors.fill: parent
                     anchors.margins: Theme.spacingL
@@ -41,61 +42,53 @@ Item {
                         spacing: Theme.spacingM
 
                         DankIcon {
-                            name: "dock_to_bottom"
+                            name: "swap_vert"
                             size: Theme.iconSize
                             color: Theme.primary
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        Column {
-                            width: parent.width - Theme.iconSize - Theme.spacingM
-                                   - enableToggle.width - Theme.spacingM
-                            spacing: Theme.spacingXS
+                        StyledText {
+                            id: positionText
+                            text: "Dock Position"
+                            font.pixelSize: Theme.fontSizeLarge
+                            font.weight: Font.Medium
+                            color: Theme.surfaceText
                             anchors.verticalCenter: parent.verticalCenter
-
-                            StyledText {
-                                text: "Show Dock"
-                                font.pixelSize: Theme.fontSizeLarge
-                                font.weight: Font.Medium
-                                color: Theme.surfaceText
-                            }
-
-                            StyledText {
-                                text: "Display a dock at the bottom of the screen with pinned and running applications"
-                                font.pixelSize: Theme.fontSizeSmall
-                                color: Theme.surfaceVariantText
-                                wrapMode: Text.WordWrap
-                                width: parent.width
-                            }
                         }
 
-                        DankToggle {
-                            id: enableToggle
-
+                        Item {
+                            width: parent.width - Theme.iconSize - Theme.spacingM - positionText.width - positionButtonGroup.width - Theme.spacingM * 2
                             anchors.verticalCenter: parent.verticalCenter
-                            checked: SettingsData.showDock
-                            onToggled: checked => {
-                                           SettingsData.setShowDock(checked)
-                                       }
+                        }
+
+                        DankButtonGroup {
+                            id: positionButtonGroup
+                            anchors.verticalCenter: parent.verticalCenter
+                            model: ["Top", "Bottom"]
+                            currentIndex: SettingsData.dockPosition === SettingsData.Position.Bottom ? 1 : 0
+                            onSelectionChanged: (index, selected) => {
+                                if (selected) {
+                                    SettingsData.setDockPosition(index === 1 ? SettingsData.Position.Bottom : SettingsData.Position.Top)
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Auto-hide Dock
+            // Dock Visibility Section
             StyledRect {
                 width: parent.width
-                height: autoHideSection.implicitHeight + Theme.spacingL * 2
+                height: dockVisibilitySection.implicitHeight + Theme.spacingL * 2
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
                 border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
                                       Theme.outline.b, 0.2)
                 border.width: 0
-                visible: SettingsData.showDock
-                opacity: visible ? 1 : 0
 
                 Column {
-                    id: autoHideSection
+                    id: dockVisibilitySection
 
                     anchors.fill: parent
                     anchors.margins: Theme.spacingL
@@ -126,7 +119,7 @@ Item {
                             }
 
                             StyledText {
-                                text: "Hide the dock when not in use and reveal it when hovering near the bottom of the screen"
+                                text: "Hide the dock when not in use and reveal it when hovering near the dock area"
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.surfaceVariantText
                                 wrapMode: Text.WordWrap
@@ -144,41 +137,73 @@ Item {
                                        }
                         }
                     }
-                }
 
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Theme.mediumDuration
-                        easing.type: Theme.emphasizedEasing
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: Theme.outline
+                        opacity: 0.2
                     }
-                }
-            }
-
-            // Show Dock in Overview
-            StyledRect {
-                width: parent.width
-                height: overviewSection.implicitHeight + Theme.spacingL * 2
-                radius: Theme.cornerRadius
-                color: Theme.surfaceContainerHigh
-                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
-                                      Theme.outline.b, 0.2)
-                border.width: 0
-                visible: SettingsData.showDock
-                opacity: visible ? 1 : 0
-
-                Column {
-                    id: overviewSection
-
-                    anchors.fill: parent
-                    anchors.margins: Theme.spacingL
-                    spacing: Theme.spacingM
 
                     Row {
                         width: parent.width
                         spacing: Theme.spacingM
 
                         DankIcon {
-                            name: "visibility_off"
+                            name: "dock_to_bottom"
+                            size: Theme.iconSize
+                            color: Theme.primary
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Column {
+                            width: parent.width - Theme.iconSize - Theme.spacingM
+                                   - enableToggle.width - Theme.spacingM
+                            spacing: Theme.spacingXS
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            StyledText {
+                                text: "Show Dock"
+                                font.pixelSize: Theme.fontSizeLarge
+                                font.weight: Font.Medium
+                                color: Theme.surfaceText
+                            }
+
+                            StyledText {
+                                text: "Display a dock with pinned and running applications that can be positioned at the top or bottom of the screen"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.surfaceVariantText
+                                wrapMode: Text.WordWrap
+                                width: parent.width
+                            }
+                        }
+
+                        DankToggle {
+                            id: enableToggle
+
+                            anchors.verticalCenter: parent.verticalCenter
+                            checked: SettingsData.showDock
+                            onToggled: checked => {
+                                           SettingsData.setShowDock(checked)
+                                       }
+                        }
+                    }
+
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: Theme.outline
+                        opacity: 0.2
+                        visible: CompositorService.isNiri
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: Theme.spacingM
+                        visible: CompositorService.isNiri
+
+                        DankIcon {
+                            name: "fullscreen"
                             size: Theme.iconSize
                             color: Theme.primary
                             anchors.verticalCenter: parent.verticalCenter
@@ -212,16 +237,9 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             checked: SettingsData.dockOpenOnOverview
                             onToggled: checked => {
-                                           SettingsData.setdockOpenOnOverview(checked)
+                                           SettingsData.setDockOpenOnOverview(checked)
                                        }
                         }
-                    }
-                }
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Theme.mediumDuration
-                        easing.type: Theme.emphasizedEasing
                     }
                 }
             }
@@ -286,6 +304,110 @@ Item {
                             onToggled: checked => {
                                            SettingsData.setDockGroupByApp(checked)
                                        }
+                        }
+                    }
+                }
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: Theme.mediumDuration
+                        easing.type: Theme.emphasizedEasing
+                    }
+                }
+            }
+
+            // Dock Spacing Section
+            StyledRect {
+                width: parent.width
+                height: dockSpacingSection.implicitHeight + Theme.spacingL * 2
+                radius: Theme.cornerRadius
+                color: Theme.surfaceContainerHigh
+                border.color: Qt.rgba(Theme.outline.r, Theme.outline.g,
+                                      Theme.outline.b, 0.2)
+                border.width: 0
+                visible: SettingsData.showDock
+                opacity: visible ? 1 : 0
+
+                Column {
+                    id: dockSpacingSection
+
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingL
+                    spacing: Theme.spacingM
+
+                    Row {
+                        width: parent.width
+                        spacing: Theme.spacingM
+
+                        DankIcon {
+                            name: "space_bar"
+                            size: Theme.iconSize
+                            color: Theme.primary
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        StyledText {
+                            text: "Spacing"
+                            font.pixelSize: Theme.fontSizeLarge
+                            font.weight: Font.Medium
+                            color: Theme.surfaceText
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    Column {
+                        width: parent.width
+                        spacing: Theme.spacingS
+
+                        StyledText {
+                            text: "Padding"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceText
+                            font.weight: Font.Medium
+                        }
+
+                        DankSlider {
+                            width: parent.width
+                            height: 24
+                            value: SettingsData.dockSpacing
+                            minimum: 0
+                            maximum: 32
+                            unit: ""
+                            showValue: true
+                            wheelEnabled: false
+                            thumbOutlineColor: Theme.surfaceContainerHigh
+                            onSliderValueChanged: newValue => {
+                                                      SettingsData.setDockSpacing(
+                                                          newValue)
+                                                  }
+                        }
+                    }
+
+                    Column {
+                        width: parent.width
+                        spacing: Theme.spacingS
+
+                        StyledText {
+                            text: "Height to Edge Gap (Exclusive Zone)"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceText
+                            font.weight: Font.Medium
+                        }
+
+                        DankSlider {
+                            width: parent.width
+                            height: 24
+                            value: SettingsData.dockBottomGap
+                            minimum: -100
+                            maximum: 100
+                            unit: ""
+                            showValue: true
+                            wheelEnabled: false
+                            thumbOutlineColor: Theme.surfaceContainerHigh
+                            onSliderValueChanged: newValue => {
+                                                      SettingsData.setDockBottomGap(
+                                                          newValue)
+                                                  }
                         }
                     }
                 }

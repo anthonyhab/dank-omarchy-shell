@@ -254,8 +254,8 @@ Item {
                                                 }
                                                 wallpaperBrowser.open()
                                             }
-                                        }
                                     }
+                                }
 
 
                                     Rectangle {
@@ -371,12 +371,9 @@ Item {
                                     iconSize: Theme.iconSizeSmall
                                     enabled: {
                                         var currentWallpaper = SessionData.perMonitorWallpaper ? SessionData.getMonitorWallpaper(selectedMonitorName) : SessionData.wallpaperPath
-                                        return currentWallpaper && !currentWallpaper.startsWith("#") && !currentWallpaper.startsWith("we")
+                                        return currentWallpaper && !currentWallpaper.startsWith("#") && !currentWallpaper.startsWith("we:")
                                     }
-                                    opacity: {
-                                        var currentWallpaper = SessionData.perMonitorWallpaper ? SessionData.getMonitorWallpaper(selectedMonitorName) : SessionData.wallpaperPath
-                                        return (currentWallpaper && !currentWallpaper.startsWith("#") && !currentWallpaper.startsWith("we")) ? 1 : 0.5
-                                    }
+                                    opacity: enabled ? 1 : 0.5
                                     backgroundColor: Theme.surfaceContainerHigh
                                     iconColor: Theme.surfaceText
                                     onClicked: {
@@ -394,12 +391,9 @@ Item {
                                     iconSize: Theme.iconSizeSmall
                                     enabled: {
                                         var currentWallpaper = SessionData.perMonitorWallpaper ? SessionData.getMonitorWallpaper(selectedMonitorName) : SessionData.wallpaperPath
-                                        return currentWallpaper && !currentWallpaper.startsWith("#") && !currentWallpaper.startsWith("we")
+                                        return currentWallpaper && !currentWallpaper.startsWith("#") && !currentWallpaper.startsWith("we:")
                                     }
-                                    opacity: {
-                                        var currentWallpaper = SessionData.perMonitorWallpaper ? SessionData.getMonitorWallpaper(selectedMonitorName) : SessionData.wallpaperPath
-                                        return (currentWallpaper && !currentWallpaper.startsWith("#") && !currentWallpaper.startsWith("we")) ? 1 : 0.5
-                                    }
+                                    opacity: enabled ? 1 : 0.5
                                     backgroundColor: Theme.surfaceContainerHigh
                                     iconColor: Theme.surfaceText
                                     onClicked: {
@@ -411,6 +405,49 @@ Item {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: Theme.spacingM
+
+                        DankIcon {
+                            name: SessionData.wallpaperControlMode === "internal" ? "layers" : "wallpaper_slideshow"
+                            size: Theme.iconSize
+                            color: SessionData.wallpaperControlMode === "internal" ? Theme.primary : Theme.surfaceVariantText
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Column {
+                            width: parent.width - Theme.iconSize - Theme.spacingM - wallpaperControlToggle.width - Theme.spacingM
+                            spacing: Theme.spacingXS
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            StyledText {
+                                text: "Quickshell Wallpaper Windows"
+                                font.pixelSize: Theme.fontSizeLarge
+                                font.weight: Font.Medium
+                                color: Theme.surfaceText
+                            }
+
+                            StyledText {
+                                text: "Disable to let swww draw the wallpaper; Quickshell wallpaper windows and transitions are disabled, but cycling and per-monitor controls stay available."
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.surfaceVariantText
+                                wrapMode: Text.WordWrap
+                                width: parent.width
+                            }
+                        }
+
+                        DankToggle {
+                            id: wallpaperControlToggle
+
+                            anchors.verticalCenter: parent.verticalCenter
+                            checked: SessionData.wallpaperControlMode === "internal"
+                            onToggled: toggled => {
+                                           SessionData.setWallpaperControlMode(toggled ? "internal" : "swww")
+                                       }
                         }
                     }
 
@@ -567,8 +604,8 @@ Item {
                                     target: personalizationTab
                                     function onSelectedMonitorNameChanged() {
                                         cyclingToggle.checked = Qt.binding(() => {
-                                            return SessionData.perMonitorWallpaper ? SessionData.getMonitorCyclingSettings(selectedMonitorName).enabled : SessionData.wallpaperCyclingEnabled
-                                        })
+                                                                               return SessionData.perMonitorWallpaper ? SessionData.getMonitorCyclingSettings(selectedMonitorName).enabled : SessionData.wallpaperCyclingEnabled
+                                                                           })
                                     }
                                 }
                             }
@@ -595,7 +632,7 @@ Item {
                                 Item {
                                     width: 200
                                     height: 45 + Theme.spacingM
-                                    
+
                                     DankTabBar {
                                         id: modeTabBar
 
@@ -627,12 +664,12 @@ Item {
                                             target: personalizationTab
                                             function onSelectedMonitorNameChanged() {
                                                 modeTabBar.currentIndex = Qt.binding(() => {
-                                                    if (SessionData.perMonitorWallpaper) {
-                                                        return SessionData.getMonitorCyclingSettings(selectedMonitorName).mode === "time" ? 1 : 0
-                                                    } else {
-                                                        return SessionData.wallpaperCyclingMode === "time" ? 1 : 0
-                                                    }
-                                                })
+                                                                                         if (SessionData.perMonitorWallpaper) {
+                                                                                             return SessionData.getMonitorCyclingSettings(selectedMonitorName).mode === "time" ? 1 : 0
+                                                                                         } else {
+                                                                                             return SessionData.wallpaperCyclingMode === "time" ? 1 : 0
+                                                                                         }
+                                                                                     })
                                                 Qt.callLater(modeTabBar.updateIndicator)
                                             }
                                         }
@@ -683,15 +720,15 @@ Item {
                                     function onSelectedMonitorNameChanged() {
                                         // Force dropdown to refresh its currentValue
                                         Qt.callLater(() => {
-                                            var currentSeconds
-                                            if (SessionData.perMonitorWallpaper) {
-                                                currentSeconds = SessionData.getMonitorCyclingSettings(selectedMonitorName).interval
-                                            } else {
-                                                currentSeconds = SessionData.wallpaperCyclingInterval
-                                            }
-                                            const index = intervalDropdown.intervalValues.indexOf(currentSeconds)
-                                            intervalDropdown.currentValue = index >= 0 ? intervalDropdown.intervalOptions[index] : "5 minutes"
-                                        })
+                                                         var currentSeconds
+                                                         if (SessionData.perMonitorWallpaper) {
+                                                             currentSeconds = SessionData.getMonitorCyclingSettings(selectedMonitorName).interval
+                                                         } else {
+                                                             currentSeconds = SessionData.wallpaperCyclingInterval
+                                                         }
+                                                         const index = intervalDropdown.intervalValues.indexOf(currentSeconds)
+                                                         intervalDropdown.currentValue = index >= 0 ? intervalDropdown.intervalOptions[index] : "5 minutes"
+                                                     })
                                     }
                                 }
                             }
@@ -773,12 +810,12 @@ Item {
                                         function onSelectedMonitorNameChanged() {
                                             // Force text field to refresh its value
                                             Qt.callLater(() => {
-                                                if (SessionData.perMonitorWallpaper) {
-                                                    timeTextField.text = SessionData.getMonitorCyclingSettings(selectedMonitorName).time
-                                                } else {
-                                                    timeTextField.text = SessionData.wallpaperCyclingTime
-                                                }
-                                            })
+                                                             if (SessionData.perMonitorWallpaper) {
+                                                                 timeTextField.text = SessionData.getMonitorCyclingSettings(selectedMonitorName).time
+                                                             } else {
+                                                                 timeTextField.text = SessionData.wallpaperCyclingTime
+                                                             }
+                                                         })
                                         }
                                     }
                                 }
@@ -798,6 +835,7 @@ Item {
                         height: 1
                         color: Theme.outline
                         opacity: 0.2
+                        visible: SessionData.wallpaperControlMode === "internal"
                     }
 
                     DankDropdown {
@@ -805,20 +843,22 @@ Item {
                         text: "Transition Effect"
                         description: "Visual effect used when wallpaper changes"
                         currentValue: {
-                            if (SessionData.wallpaperTransition === "random") return "Random"
+                            if (SessionData.wallpaperTransition === "random")
+                                return "Random"
                             return SessionData.wallpaperTransition.charAt(0).toUpperCase() + SessionData.wallpaperTransition.slice(1)
                         }
                         options: ["Random"].concat(SessionData.availableWallpaperTransitions.map(t => t.charAt(0).toUpperCase() + t.slice(1)))
                         onValueChanged: value => {
-                            var transition = value.toLowerCase()
-                            SessionData.setWallpaperTransition(transition)
-                        }
+                                            var transition = value.toLowerCase()
+                                            SessionData.setWallpaperTransition(transition)
+                                        }
+                        visible: SessionData.wallpaperControlMode === "internal"
                     }
 
                     Column {
                         width: parent.width
                         spacing: Theme.spacingS
-                        visible: SessionData.wallpaperTransition === "random"
+                        visible: SessionData.wallpaperControlMode === "internal" && SessionData.wallpaperTransition === "random"
                         leftPadding: Theme.spacingM
                         rightPadding: Theme.spacingM
 
@@ -846,17 +886,17 @@ Item {
                             currentSelection: SessionData.includedTransitions
 
                             onSelectionChanged: (index, selected) => {
-                                const transition = model[index]
-                                let newIncluded = [...SessionData.includedTransitions]
+                                                    const transition = model[index]
+                                                    let newIncluded = [...SessionData.includedTransitions]
 
-                                if (selected && !newIncluded.includes(transition)) {
-                                    newIncluded.push(transition)
-                                } else if (!selected && newIncluded.includes(transition)) {
-                                    newIncluded = newIncluded.filter(t => t !== transition)
-                                }
+                                                    if (selected && !newIncluded.includes(transition)) {
+                                                        newIncluded.push(transition)
+                                                    } else if (!selected && newIncluded.includes(transition)) {
+                                                        newIncluded = newIncluded.filter(t => t !== transition)
+                                                    }
 
-                                SessionData.includedTransitions = newIncluded
-                            }
+                                                    SessionData.includedTransitions = newIncluded
+                                                }
                         }
                     }
                 }
@@ -925,28 +965,26 @@ Item {
                         }
                     }
 
-<<<<<<< HEAD
-
-                    Rectangle {
-=======
                     DankDropdown {
                         id: personalizationMatugenPaletteDropdown
                         width: parent.width
                         text: "Matugen Palette"
                         description: "Select the palette algorithm used for wallpaper-based colors"
-                        options: Theme.availableMatugenSchemes.map(function (option) { return option.label })
+                        options: Theme.availableMatugenSchemes.map(function (option) {
+                            return option.label
+                        })
                         currentValue: Theme.getMatugenScheme(SettingsData.matugenScheme).label
                         enabled: Theme.matugenAvailable
                         opacity: enabled ? 1 : 0.4
                         onValueChanged: value => {
-                            for (var i = 0; i < Theme.availableMatugenSchemes.length; i++) {
-                                var option = Theme.availableMatugenSchemes[i]
-                                if (option.label === value) {
-                                    SettingsData.setMatugenScheme(option.value)
-                                    break
-                                }
-                            }
-                        }
+                                            for (var i = 0; i < Theme.availableMatugenSchemes.length; i++) {
+                                                var option = Theme.availableMatugenSchemes[i]
+                                                if (option.label === value) {
+                                                    SettingsData.setMatugenScheme(option.value)
+                                                    break
+                                                }
+                                            }
+                                        }
                     }
 
                     StyledText {
@@ -965,7 +1003,10 @@ Item {
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.error
                         visible: ToastService.wallpaperErrorStatus === "matugen_missing"
->>>>>>> upstream/master
+                        width: parent.width
+                    }
+
+                    Rectangle {
                         width: parent.width
                         height: 1
                         color: Theme.outline
@@ -1049,7 +1090,6 @@ Item {
                                    }
                     }
 
-
                     Rectangle {
                         width: parent.width
                         height: 1
@@ -1081,7 +1121,7 @@ Item {
                         width: parent.width
                         text: "Temperature"
                         description: "Color temperature for night mode"
-                        currentValue: SessionData.nightModeTemperature + "K"
+                        currentValue: (SessionData.nightModeTemperature || 0) + "K"
                         options: {
                             var temps = []
                             for (var i = 2500; i <= 6000; i += 500) {
@@ -1135,7 +1175,7 @@ Item {
                         Item {
                             width: 200
                             height: 45 + Theme.spacingM
-                            
+
                             DankTabBar {
                                 id: modeTabBarNight
                                 width: 200
@@ -1158,7 +1198,7 @@ Item {
                                                   DisplayService.setNightModeAutomationMode(index === 1 ? "location" : "time")
                                                   currentIndex = index
                                               }
-                                              
+
                                 Connections {
                                     target: SessionData
                                     function onNightModeAutoModeChanged() {
@@ -1217,7 +1257,7 @@ Item {
                                     width: 60
                                     height: 32
                                     text: ""
-                                    currentValue: SessionData.nightModeStartHour.toString()
+                                    currentValue: (SessionData.nightModeStartHour || 0).toString()
                                     options: {
                                         var hours = []
                                         for (var i = 0; i < 24; i++) {
@@ -1234,7 +1274,7 @@ Item {
                                     width: 60
                                     height: 32
                                     text: ""
-                                    currentValue: SessionData.nightModeStartMinute.toString().padStart(2, '0')
+                                    currentValue: (SessionData.nightModeStartMinute || 0).toString().padStart(2, '0')
                                     options: {
                                         var minutes = []
                                         for (var i = 0; i < 60; i += 5) {
@@ -1265,7 +1305,7 @@ Item {
                                     width: 60
                                     height: 32
                                     text: ""
-                                    currentValue: SessionData.nightModeEndHour.toString()
+                                    currentValue: (SessionData.nightModeEndHour || 0).toString()
                                     options: {
                                         var hours = []
                                         for (var i = 0; i < 24; i++) {
@@ -1282,7 +1322,7 @@ Item {
                                     width: 60
                                     height: 32
                                     text: ""
-                                    currentValue: SessionData.nightModeEndMinute.toString().padStart(2, '0')
+                                    currentValue: (SessionData.nightModeEndMinute || 0).toString().padStart(2, '0')
                                     options: {
                                         var minutes = []
                                         for (var i = 0; i < 60; i += 5) {
@@ -1343,7 +1383,7 @@ Item {
                                     DankTextField {
                                         width: 120
                                         height: 40
-                                        text: SessionData.latitude.toString()
+                                        text: (SessionData.latitude || 0).toString()
                                         placeholderText: "0.0"
                                         onTextChanged: {
                                             const lat = parseFloat(text) || 0.0
@@ -1366,7 +1406,7 @@ Item {
                                     DankTextField {
                                         width: 120
                                         height: 40
-                                        text: SessionData.longitude.toString()
+                                        text: (SessionData.longitude || 0).toString()
                                         placeholderText: "0.0"
                                         onTextChanged: {
                                             const lon = parseFloat(text) || 0.0
@@ -1601,7 +1641,7 @@ Item {
                             }
 
                             StyledText {
-                                text: "Scale all font sizes (" + (SettingsData.fontScale * 100).toFixed(0) + "%)"
+                                text: "Scale all font sizes (" + ((SettingsData.fontScale || 1) * 100).toFixed(0) + "%)"
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.surfaceVariantText
                                 width: parent.width
@@ -1637,7 +1677,7 @@ Item {
 
                                 StyledText {
                                     anchors.centerIn: parent
-                                    text: (SettingsData.fontScale * 100).toFixed(0) + "%"
+                                    text: ((SettingsData.fontScale || 1) * 100).toFixed(0) + "%"
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.weight: Font.Medium
                                     color: Theme.surfaceText
@@ -1687,7 +1727,6 @@ Item {
             }
         }
     }
-
 
     DankColorPicker {
         id: colorPicker
