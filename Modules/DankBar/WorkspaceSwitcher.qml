@@ -22,6 +22,8 @@ Rectangle {
         return 1
     }
     property var workspaceSlots: []
+    readonly property int highlightMotionDuration: 230
+    readonly property int highlightResizeDuration: 190
     onWorkspaceSlotsChanged: updateActiveHighlight()
 
     function refreshWorkspaceSlots() {
@@ -35,6 +37,14 @@ Rectangle {
             const baseList = getHyprlandWorkspaces()
             const resolved = SettingsData.showWorkspacePadding ? padWorkspaces(baseList) : baseList
             slots = resolved.map((entry, index) => createHyprlandSlot(entry, index))
+
+            if (SettingsData.showWorkspacePadding) {
+                const activeWorkspaceTarget = getHyprlandActiveWorkspace()
+                const desiredTarget = root.desiredWorkspaceTarget
+                const highlightTarget = (desiredTarget !== null && desiredTarget !== undefined) ? desiredTarget : activeWorkspaceTarget
+                const pruneTargets = [activeWorkspaceTarget, desiredTarget, highlightTarget]
+                slots = pruneHyprlandOverflowSlots(slots, pruneTargets)
+            }
         }
 
         workspaceSlots = slots
@@ -93,6 +103,46 @@ Rectangle {
         }
     }
 
+    function hyprlandNumericValue(value) {
+        if (value === undefined || value === null) {
+            return null
+        }
+
+        const numeric = Number(value)
+        return isNaN(numeric) ? null : numeric
+    }
+
+    function hyprlandWorkspaceSnapshot(entry) {
+        if (!entry) {
+            return null
+        }
+
+        const snapshot = {
+            "id": entry.id !== undefined ? entry.id : null,
+            "name": entry.name !== undefined ? entry.name : null,
+            "displayIndex": entry.displayIndex !== undefined ? entry.displayIndex : null,
+            "persistent": entry.persistent === true,
+            "windows": hyprlandNumericValue(entry.windows),
+            "clients": hyprlandNumericValue(entry.clients),
+            "lastIpc": null
+        }
+
+        if (entry.lastIpcObject) {
+            const ipc = entry.lastIpcObject
+            snapshot.lastIpc = {
+                "windows": hyprlandNumericValue(ipc.windows),
+                "clients": hyprlandNumericValue(ipc.clients),
+                "monitor": ipc.monitor !== undefined ? ipc.monitor : null,
+                "workspace": ipc.workspace ? {
+                    "id": ipc.workspace.id !== undefined ? ipc.workspace.id : null,
+                    "name": ipc.workspace.name !== undefined ? ipc.workspace.name : null
+                } : null
+            }
+        }
+
+        return snapshot
+    }
+
     function createHyprlandSlot(entry, index) {
         const isPlaceholder = !entry || entry.id === -1
 
@@ -143,6 +193,8 @@ Rectangle {
             keyToken = `idx-${index}`
         }
 
+        const snapshot = isPlaceholder ? null : hyprlandWorkspaceSnapshot(entry)
+
         return {
             "key": `hypr-${keyToken}`,
             "kind": "hyprland",
@@ -154,7 +206,7 @@ Rectangle {
             "command": commandTarget,
             "iconWorkspaceId": identifierIsNumeric ? numericIdentifier : null,
             "name": entry && entry.name ? entry.name : String(labelValue),
-            "source": isPlaceholder ? null : entry,
+            "source": snapshot,
             "persistent": entry && entry.persistent === true
         }
     }
@@ -193,6 +245,57 @@ Rectangle {
         return Number.MAX_SAFE_INTEGER
     }
 
+    function hyprlandCollectionValues(collection) {
+        if (!collection) {
+            return []
+        }
+
+        if (Array.isArray(collection)) {
+            return collection.slice()
+        }
+
+        const valuesProperty = collection.values
+        if (Array.isArray(valuesProperty)) {
+            return valuesProperty.slice()
+        }
+
+        if (valuesProperty && typeof valuesProperty[Symbol.iterator] === "function") {
+            try {
+                return Array.from(valuesProperty)
+            } catch (error) {
+                // Fall through to handle via the accessor directly
+            }
+        }
+
+        if (typeof valuesProperty === "function") {
+            try {
+                const result = valuesProperty.call(collection)
+                if (!result) {
+                    return []
+                }
+                if (Array.isArray(result)) {
+                    return result.slice()
+                }
+                if (typeof result[Symbol.iterator] === "function") {
+                    return Array.from(result)
+                }
+                if (typeof result === "object") {
+                    const objectValues = Object.values(result)
+                    return Array.isArray(objectValues) ? objectValues : []
+                }
+            } catch (error) {
+                // Ignore and fall through to object enumeration
+            }
+        }
+
+        if (typeof collection === "object") {
+            const entries = Object.values(collection)
+            return Array.isArray(entries) ? entries : []
+        }
+
+        return []
+    }
+
     function getWorkspaceIcons(slot) {
         if (!SettingsData.showWorkspaceApps || !slot || slot.placeholder) {
             return []
@@ -219,7 +322,7 @@ Rectangle {
         }
 
         const wins = CompositorService.isNiri ? (NiriService.windows || []) : CompositorService.sortedToplevels
-        const hyprlandToplevels = slot.kind === "hyprland" ? Array.from(Hyprland.toplevels?.values || []) : []
+        const hyprlandToplevels = slot.kind === "hyprland" ? hyprlandCollectionValues(Hyprland.toplevels) : []
 
         const byApp = {}
 
@@ -269,6 +372,216 @@ Rectangle {
         return Object.values(byApp)
     }
 
+    function hyprlandSlotNumericIndex(slot) {
+        if (!slot) {
+            return null
+        }
+
+        if (slot.numericIdentifier !== undefined && slot.numericIdentifier !== null) {
+            const numericIdentifier = Number(slot.numericIdentifier)
+            if (!isNaN(numericIdentifier)) {
+                return numericIdentifier
+            }
+        }
+
+        if (slot.displayIndex !== undefined && slot.displayIndex !== null) {
+            const displayIndex = Number(slot.displayIndex)
+            if (!isNaN(displayIndex)) {
+                return displayIndex
+            }
+        }
+
+        if (slot.identifier !== undefined && slot.identifier !== null) {
+            const identifier = Number(slot.identifier)
+            if (!isNaN(identifier)) {
+                return identifier
+            }
+        }
+
+        return null
+    }
+
+    function shouldKeepHyprlandOverflowSlot(slot, minimumVisible, hyprlandToplevels, windows, targets) {
+        const numericIndex = hyprlandSlotNumericIndex(slot)
+
+        if (numericIndex === null || numericIndex <= minimumVisible) {
+            return true
+        }
+
+        const preserveTargets = Array.isArray(targets) ? targets : [root.currentWorkspace, root.desiredWorkspaceTarget, root.highlightWorkspaceTarget]
+        for (let i = 0; i < preserveTargets.length; ++i) {
+            const target = preserveTargets[i]
+            if (target === undefined || target === null) {
+                continue
+            }
+
+            if (workspaceEntryMatchesTarget(slot, target)) {
+                return true
+            }
+        }
+
+        if (slot && slot.persistent === true) {
+            return true
+        }
+
+        if (!slot.placeholder && hyprlandSlotHasWindows(slot, hyprlandToplevels, windows)) {
+            return true
+        }
+
+        return false
+    }
+
+    function pruneHyprlandOverflowSlots(slots, targets) {
+        if (!slots || slots.length === 0) {
+            return []
+        }
+
+        const minimumVisible = configuredPaddingMinimum()
+        const hyprlandToplevels = hyprlandCollectionValues(Hyprland.toplevels)
+        const windows = CompositorService.sortedToplevels || []
+        const filtered = slots.filter(slot => shouldKeepHyprlandOverflowSlot(slot, minimumVisible, hyprlandToplevels, windows, targets))
+
+        return filtered.length > 0 ? filtered : slots
+    }
+
+    function hyprlandSlotHasWindows(slot, hyprlandToplevels, windows) {
+        if (!slot || slot.placeholder) {
+            return false
+        }
+
+        const source = slot.source
+        let hintPositive = false
+        let hintAvailable = false
+
+        if (source) {
+            if (source.windows !== null) {
+                hintAvailable = true
+                if (source.windows > 0) {
+                    hintPositive = true
+                }
+            }
+
+            if (source.clients !== null) {
+                hintAvailable = true
+                if (source.clients > 0) {
+                    hintPositive = true
+                }
+            }
+
+            const lastIpc = source.lastIpc
+            if (lastIpc) {
+                if (lastIpc.windows !== null) {
+                    hintAvailable = true
+                    if (lastIpc.windows > 0) {
+                        hintPositive = true
+                    }
+                }
+
+                if (lastIpc.clients !== null) {
+                    hintAvailable = true
+                    if (lastIpc.clients > 0) {
+                        hintPositive = true
+                    }
+                }
+            }
+        }
+
+        const hyprToplevelList = Array.isArray(hyprlandToplevels) ? hyprlandToplevels : []
+
+        for (let i = 0; i < hyprToplevelList.length; ++i) {
+            const toplevel = hyprToplevelList[i]
+            if (!toplevel) {
+                continue
+            }
+
+            let workspaceObject = toplevel.workspace
+            if ((!workspaceObject || workspaceObject.id === undefined) && toplevel.lastIpcObject && toplevel.lastIpcObject.workspace) {
+                workspaceObject = toplevel.lastIpcObject.workspace
+            }
+
+            if (!workspaceObject) {
+                continue
+            }
+
+            const workspaceId = normalizeWorkspaceId(workspaceObject.id !== undefined ? workspaceObject.id : workspaceObject, workspaceObject.name)
+            if (workspaceEntryMatchesTarget(slot, workspaceId)) {
+                return true
+            }
+        }
+
+        const windowList = Array.isArray(windows) ? windows : []
+        for (let i = 0; i < windowList.length; ++i) {
+            const waylandWindow = windowList[i]
+            if (!waylandWindow) {
+                continue
+            }
+
+            const hyprToplevel = hyprToplevelList.find(toplevel => toplevel && toplevel.wayland === waylandWindow)
+            if (!hyprToplevel || !hyprToplevel.workspace) {
+                continue
+            }
+
+            const workspaceId = normalizeWorkspaceId(hyprToplevel.workspace.id, hyprToplevel.workspace.name)
+            if (workspaceEntryMatchesTarget(slot, workspaceId)) {
+                return true
+            }
+        }
+
+        if (hintPositive && hyprToplevelList.length === 0 && windowList.length === 0) {
+            return true
+        }
+
+        if (!hintAvailable) {
+            return false
+        }
+
+        return false
+    }
+
+    function niriSlotHasWindows(slot, windows) {
+        if (!slot || slot.placeholder) {
+            return false
+        }
+
+        const workspaceObject = slot.source
+        if (!workspaceObject || workspaceObject.id === undefined || workspaceObject.id === null) {
+            return false
+        }
+
+        const windowList = Array.isArray(windows) ? windows : []
+        for (let i = 0; i < windowList.length; ++i) {
+            const window = windowList[i]
+            if (!window) {
+                continue
+            }
+
+            if (window.workspace_id === workspaceObject.id) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    function workspaceSlotHasWindows(slot) {
+        if (!slot || slot.placeholder) {
+            return false
+        }
+
+        if (slot.kind === "hyprland") {
+            const hyprlandToplevels = hyprlandCollectionValues(Hyprland.toplevels)
+            const windows = CompositorService.sortedToplevels || []
+            return hyprlandSlotHasWindows(slot, hyprlandToplevels, windows)
+        }
+
+        if (slot.kind === "niri") {
+            const windows = NiriService.windows || []
+            return niriSlotHasWindows(slot, windows)
+        }
+
+        return false
+    }
+
     function configuredPaddingMinimum() {
         const rawValue = SettingsData.workspacePaddingSlots !== undefined ? SettingsData.workspacePaddingSlots : 3
         const numericValue = Number(rawValue)
@@ -307,15 +620,20 @@ Rectangle {
 
             // Ensure target indices (current, highlight, desired) are present
             const ensureIndices = []
-            const cur = Number(root.currentWorkspace)
-            const desired = Number(root.desiredWorkspaceTarget)
-            const highlight = Number(root.highlightWorkspaceTarget)
-            if (!isNaN(cur))
-                ensureIndices.push(cur)
-            if (!isNaN(desired))
-                ensureIndices.push(desired)
-            if (!isNaN(highlight))
-                ensureIndices.push(highlight)
+            const registerEnsureIndex = candidate => {
+                if (candidate === undefined || candidate === null)
+                    return
+
+                const numeric = Number(candidate)
+                if (isNaN(numeric))
+                    return
+                const normalized = Math.max(1, Math.round(numeric))
+                ensureIndices.push(normalized)
+            }
+
+            registerEnsureIndex(root.currentWorkspace)
+            registerEnsureIndex(root.desiredWorkspaceTarget)
+            registerEnsureIndex(root.highlightWorkspaceTarget)
 
             let highestExisting = 0
             numericIds.forEach(value => {
@@ -325,9 +643,8 @@ Rectangle {
 
             let highestEnsure = 0
             ensureIndices.forEach(value => {
-                                      const clamped = Math.max(1, Math.min(root.maxWorkspaceIndex, value))
-                                      if (clamped > highestEnsure)
-                                      highestEnsure = clamped
+                                      if (value > highestEnsure)
+                                          highestEnsure = value
                                   })
 
             const minimumVisible = configuredPaddingMinimum()
@@ -350,17 +667,21 @@ Rectangle {
         } else {
             // Niri: ensure at least current and target indices are representable
             const ensureIndices = []
-            const cur = Number(root.currentWorkspace)
-            const desired = Number(root.desiredWorkspaceTarget)
-            const highlight = Number(root.highlightWorkspaceTarget)
-            if (!isNaN(cur))
-                ensureIndices.push(cur)
-            if (!isNaN(desired))
-                ensureIndices.push(desired)
-            if (!isNaN(highlight))
-                ensureIndices.push(highlight)
+            const registerEnsureIndex = candidate => {
+                if (candidate === undefined || candidate === null)
+                    return
 
-            const ensureMax = ensureIndices.length > 0 ? Math.max.apply(null, ensureIndices.map(v => Math.max(1, Math.min(root.maxWorkspaceIndex, v)))) : 0
+                const numeric = Number(candidate)
+                if (isNaN(numeric))
+                    return
+                ensureIndices.push(Math.max(1, Math.round(numeric)))
+            }
+
+            registerEnsureIndex(root.currentWorkspace)
+            registerEnsureIndex(root.desiredWorkspaceTarget)
+            registerEnsureIndex(root.highlightWorkspaceTarget)
+
+            const ensureMax = ensureIndices.length > 0 ? Math.max.apply(null, ensureIndices) : 0
             const minimumVisible = configuredPaddingMinimum()
             let targetLen = Math.max(minimumVisible, Math.max(ensureMax, padded.length))
             while (padded.length < targetLen) {
@@ -398,7 +719,7 @@ Rectangle {
     }
 
     function getHyprlandWorkspaces() {
-        const workspaces = Hyprland.workspaces?.values || []
+        const workspaces = hyprlandCollectionValues(Hyprland.workspaces)
 
         if (!root.screenName || !SettingsData.workspacesPerMonitor) {
             const sorted = workspaces.slice().sort((a, b) => workspaceSortValue(a) - workspaceSortValue(b))
@@ -408,14 +729,14 @@ Rectangle {
                                                  }]
         }
 
-        const monitor = (Hyprland.monitors?.values || []).find(m => m && m.name === root.screenName)
+        const monitor = hyprlandCollectionValues(Hyprland.monitors).find(m => m && m.name === root.screenName)
 
         const monitorName = monitor ? monitor.name : root.screenName
         const monitorId = monitor && monitor.id !== undefined ? monitor.id : undefined
         const assignedIds = []
 
         if (monitor && monitor.workspaces !== undefined) {
-            const workspacesList = Array.isArray(monitor.workspaces) ? monitor.workspaces : (typeof monitor.workspaces === "object" && monitor.workspaces.values) ? monitor.workspaces.values : []
+            const workspacesList = hyprlandCollectionValues(monitor.workspaces)
 
             workspacesList.forEach(item => {
                                        const normalized = normalizeWorkspaceId(item && item.id !== undefined ? item.id : item, item?.name)
@@ -478,7 +799,7 @@ Rectangle {
     function getHyprlandActiveWorkspace() {
         let candidate = null
 
-        const monitors = Hyprland.monitors?.values || []
+        const monitors = hyprlandCollectionValues(Hyprland.monitors)
         if (root.screenName && monitors.length > 0) {
             const currentMonitor = monitors.find(monitor => monitor && monitor.name === root.screenName)
             if (currentMonitor) {
@@ -534,6 +855,14 @@ Rectangle {
     }
     property var desiredWorkspaceTarget: null
     property var highlightWorkspaceTarget: currentWorkspace
+    onHighlightWorkspaceTargetChanged: {
+        if (SettingsData.showWorkspacePadding && workspaceIndexForTarget(highlightWorkspaceTarget) === -1) {
+            refreshWorkspaceSlots()
+            return
+        }
+
+        updateActiveHighlight()
+    }
     property var hyprlandWorkspaceCache: 1
     property int lastHighlightIndex: -1
 
@@ -920,6 +1249,10 @@ Rectangle {
         } else {
             syncHighlightTarget()
         }
+
+        if (CompositorService.isHyprland && SettingsData.showWorkspacePadding) {
+            refreshWorkspaceSlots()
+        }
     }
     onWidgetHeightChanged: updateActiveHighlight()
     onScreenNameChanged: {
@@ -973,42 +1306,42 @@ Rectangle {
         antialiasing: true
 
         Behavior on x {
-            SpringAnimation {
-                spring: 4.5
-                damping: 0.5
-                epsilon: 0.25
+            NumberAnimation {
+                duration: root.highlightMotionDuration
+                easing.type: Easing.InOutCubic
+                alwaysRunToEnd: true
             }
         }
 
         Behavior on y {
-            SpringAnimation {
-                spring: 4.5
-                damping: 0.5
-                epsilon: 0.25
+            NumberAnimation {
+                duration: root.highlightMotionDuration
+                easing.type: Easing.InOutCubic
+                alwaysRunToEnd: true
             }
         }
 
         Behavior on width {
-            SpringAnimation {
-                spring: 5
-                damping: 0.55
-                epsilon: 0.3
+            NumberAnimation {
+                duration: root.highlightResizeDuration
+                easing.type: Easing.OutCubic
+                alwaysRunToEnd: true
             }
         }
 
         Behavior on height {
-            SpringAnimation {
-                spring: 5
-                damping: 0.55
-                epsilon: 0.3
+            NumberAnimation {
+                duration: root.highlightResizeDuration
+                easing.type: Easing.OutCubic
+                alwaysRunToEnd: true
             }
         }
 
         Behavior on radius {
-            SpringAnimation {
-                spring: 5
-                damping: 0.55
-                epsilon: 0.3
+            NumberAnimation {
+                duration: root.highlightResizeDuration
+                easing.type: Easing.OutCubic
+                alwaysRunToEnd: true
             }
         }
     }
@@ -1033,6 +1366,7 @@ Rectangle {
                 property bool isPlaceholder: slot ? !!slot.placeholder : false
                 property bool isActive: slot ? root.workspaceEntryMatchesTarget(slot, root.currentWorkspace) : false
                 property bool isHovered: mouseArea.containsMouse
+                property bool hasWindows: false
 
                 property var loadedWorkspaceData: null
                 property var loadedIconData: null
@@ -1062,6 +1396,8 @@ Rectangle {
                     } else {
                         loadedIcons = []
                     }
+
+                    hasWindows = root.workspaceSlotHasWindows(slot)
                 }
 
                 Timer {
@@ -1106,7 +1442,10 @@ Rectangle {
                     if (isPlaceholder) {
                         return Theme.surfaceTextLight
                     }
-                    return isHovered ? Theme.outlineButton : Theme.surfaceTextAlpha
+                    if (hasWindows) {
+                        return isHovered ? Theme.outlineButton : Theme.surfaceTextAlpha
+                    }
+                    return isHovered ? Theme.surfaceTextAlpha : Theme.surfaceTextLight
                 }
 
                 MouseArea {
@@ -1263,6 +1602,10 @@ Rectangle {
                     target: NiriService
                     enabled: CompositorService.isNiri
                     function onAllWorkspacesChanged() {
+                        delegateRoot.updateAllData()
+                        root.updateActiveHighlight()
+                    }
+                    function onWindowsChanged() {
                         delegateRoot.updateAllData()
                         root.updateActiveHighlight()
                     }
