@@ -21,16 +21,23 @@ Rectangle {
         }
         return 1
     }
-    property var workspaceList: {
+    property var workspaceSlots: []
+    onWorkspaceSlotsChanged: updateActiveHighlight()
+
+    function refreshWorkspaceSlots() {
+        let slots = []
+
         if (CompositorService.isNiri) {
             const baseList = getNiriWorkspaces()
-            return SettingsData.showWorkspacePadding ? padWorkspaces(baseList) : baseList
-        }
-        if (CompositorService.isHyprland) {
+            const resolved = SettingsData.showWorkspacePadding ? padWorkspaces(baseList) : baseList
+            slots = resolved.map((value, index) => createNiriSlot(value, index))
+        } else if (CompositorService.isHyprland) {
             const baseList = getHyprlandWorkspaces()
-            return SettingsData.showWorkspacePadding ? padWorkspaces(baseList) : baseList
+            const resolved = SettingsData.showWorkspacePadding ? padWorkspaces(baseList) : baseList
+            slots = resolved.map((entry, index) => createHyprlandSlot(entry, index))
         }
-        return [1]
+
+        workspaceSlots = slots
     }
 
     function normalizeWorkspaceId(rawId, fallbackName) {
@@ -43,6 +50,126 @@ Rectangle {
             return fromName
         }
         return rawId
+    }
+
+    function createNiriSlot(value, index) {
+        const isPlaceholder = value === -1
+        const workspaceNumber = isPlaceholder ? index + 1 : value
+
+        let workspaceObject = null
+        if (!isPlaceholder) {
+            for (let i = 0; i < NiriService.allWorkspaces.length; ++i) {
+                const candidate = NiriService.allWorkspaces[i]
+                if (!candidate) {
+                    continue
+                }
+                if (candidate.idx + 1 !== workspaceNumber) {
+                    continue
+                }
+                if (SettingsData.workspacesPerMonitor && root.screenName && root.screenName.length > 0) {
+                    if (candidate.output !== root.screenName) {
+                        continue
+                    }
+                }
+                workspaceObject = candidate
+                break
+            }
+        }
+
+        const labelValue = workspaceNumber
+
+        return {
+            "key": `niri-${isPlaceholder ? `placeholder-${labelValue}` : labelValue}`,
+            "kind": "niri",
+            "placeholder": isPlaceholder,
+            "identifier": workspaceNumber,
+            "numericIdentifier": Number(workspaceNumber),
+            "displayIndex": workspaceNumber,
+            "label": String(labelValue),
+            "command": workspaceNumber,
+            "iconWorkspaceId": workspaceObject && workspaceObject.id !== undefined ? workspaceObject.id : null,
+            "source": workspaceObject,
+            "name": workspaceObject && workspaceObject.name ? workspaceObject.name : String(labelValue)
+        }
+    }
+
+    function createHyprlandSlot(entry, index) {
+        const isPlaceholder = !entry || entry.id === -1
+
+        const normalizedId = !isPlaceholder ? normalizeWorkspaceId(entry.id, entry.name) : null
+        const numericNormalized = normalizedId !== null && normalizedId !== undefined ? Number(normalizedId) : NaN
+        const hasNumeric = !isNaN(numericNormalized)
+
+        let identifier
+        if (isPlaceholder) {
+            const displayCandidate = entry && entry.displayIndex !== undefined && entry.displayIndex !== null ? entry.displayIndex : (index + 1)
+            const numericDisplay = Number(displayCandidate)
+            identifier = isNaN(numericDisplay) ? displayCandidate : numericDisplay
+        } else if (hasNumeric) {
+            identifier = numericNormalized
+        } else if (normalizedId !== undefined && normalizedId !== null) {
+            identifier = normalizedId
+        } else if (entry && entry.name !== undefined && entry.name !== null) {
+            identifier = entry.name
+        } else {
+            identifier = index + 1
+        }
+
+        const numericIdentifier = Number(identifier)
+        const identifierIsNumeric = !isNaN(numericIdentifier)
+
+        let displayIndex = identifierIsNumeric ? numericIdentifier : null
+        if (displayIndex === null || displayIndex === undefined) {
+            if (entry && entry.displayIndex !== undefined && entry.displayIndex !== null) {
+                displayIndex = entry.displayIndex
+            } else if (entry && entry.name !== undefined && entry.name !== null) {
+                displayIndex = entry.name
+            } else {
+                displayIndex = index + 1
+            }
+        }
+
+        const labelValue = displayIndex !== undefined && displayIndex !== null ? displayIndex : identifier
+        const commandTarget = !isPlaceholder && entry && entry.name && entry.name.length > 0 ? entry.name : identifier
+
+        let keyToken
+        if (isPlaceholder) {
+            keyToken = `placeholder-${labelValue}`
+        } else if (entry && entry.id !== undefined && entry.id !== null) {
+            keyToken = `id-${entry.id}`
+        } else if (entry && entry.name !== undefined && entry.name !== null) {
+            keyToken = `name-${entry.name}`
+        } else {
+            keyToken = `idx-${index}`
+        }
+
+        return {
+            "key": `hypr-${keyToken}`,
+            "kind": "hyprland",
+            "placeholder": isPlaceholder,
+            "identifier": identifier,
+            "numericIdentifier": identifierIsNumeric ? numericIdentifier : NaN,
+            "displayIndex": displayIndex,
+            "label": String(labelValue),
+            "command": commandTarget,
+            "iconWorkspaceId": identifierIsNumeric ? numericIdentifier : null,
+            "name": entry && entry.name ? entry.name : String(labelValue),
+            "source": isPlaceholder ? null : entry,
+            "persistent": entry && entry.persistent === true
+        }
+    }
+
+    function slotDisplayLabel(slot) {
+        if (!slot) {
+            return ""
+        }
+        if (slot.label !== undefined && slot.label !== null) {
+            return slot.label
+        }
+        if (slot.identifier !== undefined && slot.identifier !== null) {
+            return String(slot.identifier)
+        }
+        return ""
     }
 
     function workspaceSortValue(ws) {
@@ -66,52 +193,52 @@ Rectangle {
         return Number.MAX_SAFE_INTEGER
     }
 
-    function getWorkspaceIcons(ws) {
-        if (!SettingsData.showWorkspaceApps || !ws) {
+    function getWorkspaceIcons(slot) {
+        if (!SettingsData.showWorkspaceApps || !slot || slot.placeholder) {
             return []
         }
 
-        let targetWorkspaceId
-        if (CompositorService.isNiri) {
-            const wsNumber = typeof ws === "number" ? ws : -1
-            if (wsNumber <= 0) {
+        let targetWorkspaceId = null
+        let isActiveWs = false
+
+        if (slot.kind === "niri") {
+            const workspaceObject = slot.source
+            if (!workspaceObject) {
                 return []
             }
-            const workspace = NiriService.allWorkspaces.find(w => w.idx + 1 === wsNumber && w.output === root.screenName)
-            if (!workspace) {
+            targetWorkspaceId = workspaceObject.id
+            isActiveWs = !!workspaceObject.is_active
+        } else if (slot.kind === "hyprland") {
+            if (slot.iconWorkspaceId === null || slot.iconWorkspaceId === undefined || slot.iconWorkspaceId === -1) {
                 return []
             }
-            targetWorkspaceId = workspace.id
-        } else if (CompositorService.isHyprland) {
-            const normalized = normalizeWorkspaceId(ws.id !== undefined ? ws.id : ws, ws.name)
-            if (normalized === null || normalized === undefined || normalized === -1) {
-                return []
-            }
-            targetWorkspaceId = normalized
+            targetWorkspaceId = slot.iconWorkspaceId
+            isActiveWs = workspaceEntryMatchesTarget(slot, root.currentWorkspace)
         } else {
             return []
         }
 
         const wins = CompositorService.isNiri ? (NiriService.windows || []) : CompositorService.sortedToplevels
+        const hyprlandToplevels = slot.kind === "hyprland" ? Array.from(Hyprland.toplevels?.values || []) : []
 
         const byApp = {}
-        const isActiveWs = CompositorService.isNiri ? NiriService.allWorkspaces.some(ws => ws.id === targetWorkspaceId && ws.is_active) : targetWorkspaceId === root.currentWorkspace
 
         wins.forEach((w, i) => {
                          if (!w) {
                              return
                          }
 
-                         let winWs = null
-                         if (CompositorService.isNiri) {
-                             winWs = w.workspace_id
-                         } else {
-                             const hyprlandToplevels = Array.from(Hyprland.toplevels?.values || [])
+                         let belongsToSlot = false
+                         if (slot.kind === "niri") {
+                             belongsToSlot = w.workspace_id === targetWorkspaceId
+                         } else if (slot.kind === "hyprland") {
                              const hyprToplevel = hyprlandToplevels.find(ht => ht.wayland === w)
-                             winWs = normalizeWorkspaceId(hyprToplevel?.workspace?.id, hyprToplevel?.workspace?.name)
+                             const winWorkspace = normalizeWorkspaceId(hyprToplevel && hyprToplevel.workspace ? hyprToplevel.workspace.id : undefined,
+                                                                      hyprToplevel && hyprToplevel.workspace ? hyprToplevel.workspace.name : undefined)
+                             belongsToSlot = workspaceEntryMatchesTarget(slot, winWorkspace)
                          }
 
-                         if (winWs === undefined || winWs === null || winWs !== targetWorkspaceId) {
+                         if (!belongsToSlot) {
                              return
                          }
 
@@ -384,7 +511,27 @@ Rectangle {
     }
 
     readonly property real padding: (widgetHeight - workspaceRow.implicitHeight) / 2
-    property int maxWorkspaceIndex: Math.max(10, configuredPaddingMinimum())
+    property int maxWorkspaceIndex: {
+        let maxValue = Math.max(10, configuredPaddingMinimum())
+        for (let i = 0; i < workspaceSlots.length; ++i) {
+            const slot = workspaceSlots[i]
+            if (!slot) {
+                continue
+            }
+            const numericIdentifier = Number(slot.identifier)
+            if (!isNaN(numericIdentifier)) {
+                if (numericIdentifier > maxValue) {
+                    maxValue = numericIdentifier
+                }
+            } else if (slot.displayIndex !== undefined && slot.displayIndex !== null) {
+                const displayNumeric = Number(slot.displayIndex)
+                if (!isNaN(displayNumeric) && displayNumeric > maxValue) {
+                    maxValue = displayNumeric
+                }
+            }
+        }
+        return maxValue
+    }
     property var desiredWorkspaceTarget: null
     property var highlightWorkspaceTarget: currentWorkspace
     property var hyprlandWorkspaceCache: 1
@@ -446,6 +593,15 @@ Rectangle {
             return null
         }
 
+        if (entry.kind === "hyprland") {
+            if (entry.identifier !== undefined && entry.identifier !== null) {
+                return entry.identifier
+            }
+            if (entry.source) {
+                return getHyprlandWorkspaceIdentifier(entry.source)
+            }
+        }
+
         if (entry.id !== undefined && entry.id !== -1) {
             return normalizeWorkspaceId(entry.id, entry.name)
         }
@@ -500,39 +656,42 @@ Rectangle {
     }
 
     function workspaceEntryMatchesTarget(entry, target) {
-        if (target === undefined || target === null) {
+        if (target === undefined || target === null || entry === undefined || entry === null) {
             return false
         }
 
-        if (CompositorService.isHyprland) {
+        if (entry.kind === "hyprland" || CompositorService.isHyprland) {
             return hyprlandWorkspaceMatches(entry, target)
         }
 
-        if (entry === undefined || entry === null) {
-            return false
-        }
-
+        const candidate = entry.identifier !== undefined ? entry.identifier : entry
         const numericTarget = Number(target)
-        const numericEntry = Number(entry)
+        const numericEntry = Number(candidate)
 
         if (!isNaN(numericTarget) && !isNaN(numericEntry)) {
             return numericEntry === numericTarget
         }
 
-        return entry === target
+        if (candidate !== undefined && candidate !== null) {
+            if (candidate === target) {
+                return true
+            }
+            return String(candidate) === String(target)
+        }
+
+        return false
     }
 
     function workspaceSlotHeight() {
         return SettingsData.showWorkspaceApps ? widgetHeight * 0.8 : widgetHeight * 0.6
     }
 
-    function workspaceSlotWidth(entry) {
-        if (!SettingsData.showWorkspaceApps) {
+    function workspaceSlotWidth(slot) {
+        if (!slot || slot.placeholder || !SettingsData.showWorkspaceApps) {
             return widgetHeight * 1.2
         }
 
-        const iconTarget = CompositorService.isHyprland ? entry : (entry === -1 ? null : entry)
-        const icons = root.getWorkspaceIcons(iconTarget) || []
+        const icons = root.getWorkspaceIcons(slot) || []
         const numIcons = Math.min(icons.length, SettingsData.maxWorkspaceIcons)
         const iconsWidth = numIcons * 18 + (numIcons > 0 ? (numIcons - 1) * Theme.spacingXS : 0)
         const baseWidth = widgetHeight * 1.0 + Theme.spacingXS
@@ -540,7 +699,7 @@ Rectangle {
     }
 
     function predictedGeometryForIndex(index) {
-        const list = root.workspaceList || []
+        const list = root.workspaceSlots || []
         if (index < 0 || index >= list.length) {
             return null
         }
@@ -550,15 +709,15 @@ Rectangle {
         let x = rowTopLeft.x
 
         for (var i = 0; i < index; ++i) {
-            const entry = list[i]
+            const slot = list[i]
             const delegate = workspaceRepeater && workspaceRepeater.itemAt ? workspaceRepeater.itemAt(i) : null
-            const width = delegate ? delegate.width : workspaceSlotWidth(entry)
+            const width = delegate ? delegate.width : workspaceSlotWidth(slot)
             x += width + spacing
         }
 
-        const entry = list[index]
+        const slot = list[index]
         const delegate = workspaceRepeater && workspaceRepeater.itemAt ? workspaceRepeater.itemAt(index) : null
-        const slotWidth = delegate ? delegate.width : workspaceSlotWidth(entry)
+        const slotWidth = delegate ? delegate.width : workspaceSlotWidth(slot)
         const slotHeight = delegate ? delegate.height : workspaceSlotHeight()
         const rowHeight = workspaceRow.height > 0 ? workspaceRow.height : workspaceRow.implicitHeight
         const baseHeight = rowHeight > 0 ? rowHeight : slotHeight
@@ -578,7 +737,7 @@ Rectangle {
             return -1
         }
 
-        const list = root.workspaceList || []
+        const list = root.workspaceSlots || []
         for (var i = 0; i < list.length; ++i) {
             if (workspaceEntryMatchesTarget(list[i], target)) {
                 return i
@@ -622,7 +781,7 @@ Rectangle {
 
         // If the target is not present in the model yet, avoid snapping
         // back to the current workspace. Keep the previous highlight until
-        // the model updates (onWorkspaceListChanged schedules another pass).
+        // the model updates (refreshWorkspaceSlots schedules another pass).
         if (activeIndex < 0) {
             return
         }
@@ -674,12 +833,7 @@ Rectangle {
     }
 
     function getRealWorkspaces() {
-        return root.workspaceList.filter(ws => {
-                                             if (CompositorService.isHyprland) {
-                                                 return ws && ws.id !== -1
-                                             }
-                                             return ws !== -1
-                                         })
+        return root.workspaceSlots.filter(slot => slot && !slot.placeholder)
     }
 
     function nextHyprlandTarget(direction) {
@@ -723,11 +877,14 @@ Rectangle {
                 return
             }
 
-            const currentIndex = realWorkspaces.findIndex(ws => ws === root.currentWorkspace)
+            const currentIndex = realWorkspaces.findIndex(slot => workspaceEntryMatchesTarget(slot, root.currentWorkspace))
             const validIndex = currentIndex === -1 ? 0 : currentIndex
             const nextIndex = direction > 0 ? (validIndex + 1) % realWorkspaces.length : (validIndex - 1 + realWorkspaces.length) % realWorkspaces.length
-
-            NiriService.switchToWorkspace(realWorkspaces[nextIndex] - 1)
+            const targetSlot = realWorkspaces[nextIndex]
+            const workspaceNumber = Number(targetSlot.identifier)
+            if (!isNaN(workspaceNumber)) {
+                NiriService.switchToWorkspace(workspaceNumber - 1)
+            }
         } else if (CompositorService.isHyprland) {
             const target = nextHyprlandTarget(direction)
             performHyprlandSwitch(target, true)
@@ -765,9 +922,12 @@ Rectangle {
         }
     }
     onWidgetHeightChanged: updateActiveHighlight()
-    onWorkspaceListChanged: updateActiveHighlight()
-    onScreenNameChanged: updateActiveHighlight()
+    onScreenNameChanged: {
+        refreshWorkspaceSlots()
+        updateActiveHighlight()
+    }
     Component.onCompleted: {
+        refreshWorkspaceSlots()
         hyprlandWorkspaceCache = root.currentWorkspace
         highlightWorkspaceTarget = root.currentWorkspace
         syncHighlightTarget()
@@ -813,30 +973,42 @@ Rectangle {
         antialiasing: true
 
         Behavior on x {
-            NumberAnimation {
-                duration: Theme.mediumDuration
-                easing.type: Theme.emphasizedEasing
+            SpringAnimation {
+                spring: 4.5
+                damping: 0.5
+                epsilon: 0.25
             }
         }
 
         Behavior on y {
-            NumberAnimation {
-                duration: Theme.mediumDuration
-                easing.type: Theme.emphasizedEasing
+            SpringAnimation {
+                spring: 4.5
+                damping: 0.5
+                epsilon: 0.25
             }
         }
 
         Behavior on width {
-            NumberAnimation {
-                duration: Theme.mediumDuration
-                easing.type: Theme.emphasizedEasing
+            SpringAnimation {
+                spring: 5
+                damping: 0.55
+                epsilon: 0.3
             }
         }
 
         Behavior on height {
-            NumberAnimation {
-                duration: Theme.mediumDuration
-                easing.type: Theme.emphasizedEasing
+            SpringAnimation {
+                spring: 5
+                damping: 0.55
+                epsilon: 0.3
+            }
+        }
+
+        Behavior on radius {
+            SpringAnimation {
+                spring: 5
+                damping: 0.55
+                epsilon: 0.3
             }
         }
     }
@@ -850,21 +1022,16 @@ Rectangle {
 
         Repeater {
             id: workspaceRepeater
-            model: root.workspaceList
+            model: root.workspaceSlots
             onItemAdded: root.scheduleHighlightUpdate()
             onItemRemoved: root.scheduleHighlightUpdate()
 
             Rectangle {
                 id: delegateRoot
 
-                property var workspaceEntry: modelData
-                property bool isActive: CompositorService.isHyprland ? root.isHyprlandActiveWorkspace(modelData) : (modelData === root.currentWorkspace)
-                property bool isPlaceholder: {
-                    if (CompositorService.isHyprland) {
-                        return modelData && modelData.id === -1
-                    }
-                    return modelData === -1
-                }
+                property var slot: modelData || null
+                property bool isPlaceholder: slot ? !!slot.placeholder : false
+                property bool isActive: slot ? root.workspaceEntryMatchesTarget(slot, root.currentWorkspace) : false
                 property bool isHovered: mouseArea.containsMouse
 
                 property var loadedWorkspaceData: null
@@ -872,45 +1039,53 @@ Rectangle {
                 property bool loadedHasIcon: false
                 property var loadedIcons: []
 
+                function updateAllData() {
+                    if (isPlaceholder || !slot) {
+                        loadedWorkspaceData = null
+                        loadedIconData = null
+                        loadedHasIcon = false
+                        loadedIcons = []
+                        return
+                    }
+
+                    loadedWorkspaceData = slot.source || null
+
+                    var iconData = null
+                    if (slot.name) {
+                        iconData = SettingsData.getWorkspaceNameIcon(slot.name)
+                    }
+                    loadedIconData = iconData
+                    loadedHasIcon = iconData !== null && iconData !== undefined
+
+                    if (SettingsData.showWorkspaceApps) {
+                        loadedIcons = root.getWorkspaceIcons(slot)
+                    } else {
+                        loadedIcons = []
+                    }
+                }
+
                 Timer {
                     id: dataUpdateTimer
-                    interval: 50 // Defer data calculation by 50ms
+                    interval: 50
                     onTriggered: {
-                        if (isPlaceholder) {
-                            delegateRoot.loadedWorkspaceData = null
-                            delegateRoot.loadedIconData = null
-                            delegateRoot.loadedHasIcon = false
-                            delegateRoot.loadedIcons = []
-                            return
-                        }
-
-                        var wsData = null
-                        if (CompositorService.isNiri) {
-                            wsData = NiriService.allWorkspaces.find(ws => ws.idx + 1 === modelData && ws.output === root.screenName) || null
-                        } else if (CompositorService.isHyprland) {
-                            wsData = modelData
-                        }
-                        delegateRoot.loadedWorkspaceData = wsData
-
-                        var icData = null
-                        if (wsData?.name) {
-                            icData = SettingsData.getWorkspaceNameIcon(wsData.name)
-                        }
-                        delegateRoot.loadedIconData = icData
-                        delegateRoot.loadedHasIcon = icData !== null
-
-                        if (SettingsData.showWorkspaceApps) {
-                            delegateRoot.loadedIcons = root.getWorkspaceIcons(CompositorService.isHyprland ? modelData : (modelData === -1 ? null : modelData))
-                        } else {
-                            delegateRoot.loadedIcons = []
-                        }
-
+                        delegateRoot.updateAllData()
                         root.updateActiveHighlight()
                     }
                 }
 
-                function updateAllData() {
-                    dataUpdateTimer.restart()
+                Component.onCompleted: dataUpdateTimer.restart()
+                Component.onDestruction: root.updateActiveHighlight()
+                onSlotChanged: dataUpdateTimer.restart()
+                onIsActiveChanged: root.updateActiveHighlight()
+                onWidthChanged: {
+                    if (isActive) {
+                        root.updateActiveHighlight()
+                    }
+                }
+                onHeightChanged: {
+                    if (isActive) {
+                        root.updateActiveHighlight()
+                    }
                 }
 
                 width: {
@@ -920,7 +1095,6 @@ Rectangle {
                         const baseWidth = root.widgetHeight * 1.0 + Theme.spacingXS
                         return baseWidth + iconsWidth
                     }
-                    // Keep slot width stable to avoid row shifting.
                     return root.widgetHeight * 1.2
                 }
                 height: SettingsData.showWorkspaceApps ? widgetHeight * 0.8 : widgetHeight * 0.6
@@ -935,7 +1109,6 @@ Rectangle {
                     return isHovered ? Theme.outlineButton : Theme.surfaceTextAlpha
                 }
 
-                // No width animation for slots; stability > flourish here
                 MouseArea {
                     id: mouseArea
 
@@ -944,33 +1117,21 @@ Rectangle {
                     cursorShape: isPlaceholder ? Qt.ArrowCursor : Qt.PointingHandCursor
                     enabled: !isPlaceholder
                     onClicked: {
-                        if (isPlaceholder) {
+                        if (isPlaceholder || !slot) {
                             return
                         }
 
-                        if (CompositorService.isNiri) {
-                            NiriService.switchToWorkspace(modelData - 1)
-                        } else if (CompositorService.isHyprland && modelData?.id !== undefined) {
-                            const commandTarget = modelData.name && modelData.name.length > 0 ? modelData.name : modelData.id
-                            const highlightTarget = root.getHyprlandWorkspaceIdentifier(modelData)
-                            root.performHyprlandSwitch(commandTarget, false, highlightTarget)
+                        if (slot.kind === "niri") {
+                            const workspaceNumber = Number(slot.identifier)
+                            if (!isNaN(workspaceNumber)) {
+                                NiriService.switchToWorkspace(workspaceNumber - 1)
+                            }
+                        } else if (slot.kind === "hyprland") {
+                            root.performHyprlandSwitch(slot.command, false, slot.identifier)
                         }
                     }
                 }
 
-                onIsActiveChanged: root.updateActiveHighlight()
-                onWidthChanged: {
-                    if (isActive) {
-                        root.updateActiveHighlight()
-                    }
-                }
-                onHeightChanged: {
-                    if (isActive) {
-                        root.updateActiveHighlight()
-                    }
-                }
-
-                // Loader for App Icons
                 Loader {
                     id: appIconsLoader
                     anchors.fill: parent
@@ -1046,7 +1207,6 @@ Rectangle {
                     }
                 }
 
-                // Loader for Custom Name Icon
                 Loader {
                     id: customIconLoader
                     anchors.fill: parent
@@ -1054,7 +1214,7 @@ Rectangle {
                     sourceComponent: Item {
                         DankIcon {
                             anchors.centerIn: parent
-                            name: loadedIconData ? loadedIconData.value : "" // NULL CHECK
+                            name: loadedIconData ? loadedIconData.value : ""
                             size: Theme.fontSizeSmall
                             color: isActive ? Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.95) : Theme.surfaceTextMedium
                             weight: isActive && !isPlaceholder ? 500 : 400
@@ -1062,7 +1222,6 @@ Rectangle {
                     }
                 }
 
-                // Loader for Custom Name Text
                 Loader {
                     id: customTextLoader
                     anchors.fill: parent
@@ -1070,7 +1229,7 @@ Rectangle {
                     sourceComponent: Item {
                         StyledText {
                             anchors.centerIn: parent
-                            text: loadedIconData ? loadedIconData.value : "" // NULL CHECK
+                            text: loadedIconData ? loadedIconData.value : ""
                             color: isActive ? Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.95) : Theme.surfaceTextMedium
                             font.pixelSize: Theme.fontSizeSmall
                             font.weight: (isActive && !isPlaceholder) ? Font.DemiBold : Font.Normal
@@ -1078,7 +1237,6 @@ Rectangle {
                     }
                 }
 
-                // Loader for Workspace Index
                 Loader {
                     id: indexLoader
                     anchors.fill: parent
@@ -1086,48 +1244,13 @@ Rectangle {
                     sourceComponent: Item {
                         StyledText {
                             anchors.centerIn: parent
-                            text: {
-                                if (isPlaceholder) {
-                                    if (CompositorService.isHyprland) {
-                                        if (modelData?.displayIndex !== undefined && modelData.displayIndex !== null) {
-                                            return modelData.displayIndex
-                                        }
-                                    }
-                                    return index + 1
-                                }
-
-                                if (CompositorService.isHyprland) {
-                                    const normalized = root.normalizeWorkspaceId(modelData?.id, modelData?.name)
-                                    if (typeof normalized === "number" && !isNaN(normalized)) {
-                                        return normalized
-                                    }
-                                    if (normalized !== undefined && normalized !== null && normalized !== -1 && normalized !== "") {
-                                        return normalized
-                                    }
-                                    if (modelData?.displayIndex !== undefined && modelData.displayIndex !== null) {
-                                        return modelData.displayIndex
-                                    }
-                                    if (modelData?.name) {
-                                        return modelData.name
-                                    }
-                                    return ""
-                                }
-
-                                return modelData
-                            }
+                            text: root.slotDisplayLabel(slot)
                             color: isActive ? Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.95) : isPlaceholder ? Theme.surfaceTextAlpha : Theme.surfaceTextMedium
                             font.pixelSize: Theme.fontSizeSmall
                             font.weight: (isActive && !isPlaceholder) ? Font.DemiBold : Font.Normal
                         }
                     }
                 }
-
-                // --- LOGIC / TRIGGERS ---
-                Component.onCompleted: {
-                    updateAllData()
-                    root.updateActiveHighlight()
-                }
-                Component.onDestruction: root.updateActiveHighlight()
 
                 Connections {
                     target: CompositorService
@@ -1161,6 +1284,41 @@ Rectangle {
         target: SettingsData
         function onCornerRadiusChanged() {
             root.updateActiveHighlight()
+        }
+        function onShowWorkspacePaddingChanged() {
+            root.refreshWorkspaceSlots()
+        }
+        function onWorkspacesPerMonitorChanged() {
+            root.refreshWorkspaceSlots()
+        }
+    }
+    Connections {
+        target: CompositorService
+        function onIsHyprlandChanged() {
+            root.refreshWorkspaceSlots()
+        }
+        function onIsNiriChanged() {
+            root.refreshWorkspaceSlots()
+        }
+    }
+    Connections {
+        target: Hyprland
+        enabled: CompositorService.isHyprland
+        function onWorkspacesChanged() {
+            root.refreshWorkspaceSlots()
+        }
+        function onMonitorsChanged() {
+            root.refreshWorkspaceSlots()
+        }
+        function onFocusedWorkspaceChanged() {
+            root.refreshWorkspaceSlots()
+        }
+    }
+    Connections {
+        target: NiriService
+        enabled: CompositorService.isNiri
+        function onAllWorkspacesChanged() {
+            root.refreshWorkspaceSlots()
         }
     }
 }
