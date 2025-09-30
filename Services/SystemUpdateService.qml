@@ -53,7 +53,7 @@ Singleton {
             if (exitCode === 0) {
                 const helperPath = stdout.text.trim()
                 pkgManager = helperPath.split('/').pop()
-                checkForUpdates()
+                initialCheckTimer.restart()
             } else {
                 console.warn("SystemUpdate: No package manager found")
             }
@@ -89,7 +89,17 @@ Singleton {
         }
     }
 
+    Timer {
+        id: initialCheckTimer
+        interval: Math.max(SettingsData.systemUpdateInitialDelayMs, 0)
+        repeat: false
+        running: false
+        onTriggered: checkForUpdates()
+    }
+
     function checkForUpdates() {
+        if (initialCheckTimer.running)
+            initialCheckTimer.stop()
         if (!distributionSupported || !pkgManager || isChecking) return
 
         isChecking = true
