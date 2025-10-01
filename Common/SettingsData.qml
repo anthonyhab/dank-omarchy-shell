@@ -41,6 +41,7 @@ Singleton {
     property string weatherLocation: "New York, NY"
     property string weatherCoordinates: "40.7128,-74.0060"
     property bool useAutoLocation: false
+    property string omarchyTheme: ""
     property bool showLauncherButton: true
     property bool showWorkspaceSwitcher: true
     property bool showFocusedWindow: true
@@ -315,6 +316,7 @@ Singleton {
                 spotlightModalViewMode = settings.spotlightModalViewMode !== undefined ? settings.spotlightModalViewMode : "list"
                 networkPreference = settings.networkPreference !== undefined ? settings.networkPreference : "auto"
                 iconTheme = settings.iconTheme !== undefined ? settings.iconTheme : "System Default"
+                omarchyTheme = settings.omarchyTheme !== undefined ? settings.omarchyTheme : ""
                 useOSLogo = settings.useOSLogo !== undefined ? settings.useOSLogo : false
                 osLogoColorOverride = settings.osLogoColorOverride !== undefined ? settings.osLogoColorOverride : ""
                 osLogoBrightness = settings.osLogoBrightness !== undefined ? settings.osLogoBrightness : 0.5
@@ -435,6 +437,7 @@ Singleton {
                                                 "spotlightModalViewMode": spotlightModalViewMode,
                                                 "networkPreference": networkPreference,
                                                 "iconTheme": iconTheme,
+                                                "omarchyTheme": omarchyTheme,
                                                 "useOSLogo": useOSLogo,
                                                 "osLogoColorOverride": osLogoColorOverride,
                                                 "osLogoBrightness": osLogoBrightness,
@@ -896,6 +899,11 @@ Singleton {
         saveSettings()
         if (typeof Theme !== "undefined" && Theme.currentTheme === Theme.dynamic)
             Theme.generateSystemThemes()
+    }
+
+    function setOmarchyTheme(themeName) {
+        omarchyTheme = themeName || ""
+        saveSettings()
     }
 
     function updateGtkIconTheme(themeName) {
@@ -1434,5 +1442,21 @@ Singleton {
         }
 
         target: "bar"
+    }
+
+    IpcHandler {
+        target: "omarchy"
+
+        function setTheme(themeName: string): string {
+            if (!themeName) {
+                return "ERROR: theme name required"
+            }
+            root.setOmarchyTheme(themeName)
+            return "Omarchy theme set to: " + themeName
+        }
+
+        function getTheme(): string {
+            return "Current theme: " + root.omarchyTheme
+        }
     }
 }
