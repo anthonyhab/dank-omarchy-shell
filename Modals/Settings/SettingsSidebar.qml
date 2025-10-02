@@ -21,6 +21,9 @@ Rectangle {
         "text": "Dank Bar",
         "icon": "toolbar"
     }, {
+        "text": "Omarchy",
+        "icon": "auto_awesome"
+    }, {
         "text": "Widgets",
         "icon": "widgets"
     }, {
@@ -48,60 +51,78 @@ Rectangle {
     color: Theme.surfaceContainer
     radius: Theme.cornerRadius
 
-    Column {
+    DankFlickable {
         anchors.fill: parent
         anchors.leftMargin: Theme.spacingS
         anchors.rightMargin: Theme.spacingS
         anchors.bottomMargin: Theme.spacingS
         anchors.topMargin: Theme.spacingM + 2
-        spacing: Theme.spacingXS
+        clip: true
+        contentHeight: contentColumn.height
+        contentWidth: width
 
-        ProfileSection {
-            parentModal: sidebarContainer.parentModal
-        }
+        Column {
+            id: contentColumn
 
-        Rectangle {
-            width: parent.width - Theme.spacingS * 2
-            height: 1
-            color: Theme.outline
-            opacity: 0.2
-        }
-
-        Item {
             width: parent.width
-            height: Theme.spacingL
-        }
+            spacing: Theme.spacingXS
 
-        Repeater {
-            id: sidebarRepeater
-
-            model: sidebarContainer.sidebarItems
+            ProfileSection {
+                parentModal: sidebarContainer.parentModal
+            }
 
             Rectangle {
+                width: parent.width - Theme.spacingS * 2
+                height: 1
+                color: Theme.borderMedium
+                opacity: 1
+            }
+
+            Item {
+                width: parent.width
+                height: Theme.spacingL
+            }
+
+            Repeater {
+                id: sidebarRepeater
+
+                model: sidebarContainer.sidebarItems
+
+                Rectangle {
                 property bool isActive: sidebarContainer.currentIndex === index
 
                 width: parent.width - Theme.spacingS * 2
                 height: 44
                 radius: Theme.cornerRadius
-                color: isActive ? Theme.primaryContainer : tabMouseArea.containsMouse ? Theme.surfaceHover : Theme.withAlpha(Theme.primaryContainer, 0)
+                color: isActive ? Theme.primaryBackgroundMedium : tabMouseArea.containsMouse ? Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.06) : "transparent"
+
+                Rectangle {
+                    width: 3
+                    height: parent.height - Theme.spacingS
+                    x: 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    radius: 2
+                    color: Theme.primary
+                    visible: parent.isActive
+                }
 
                 Row {
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacingM
+                    anchors.leftMargin: Theme.spacingL
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Theme.spacingM
 
                     DankIcon {
                         name: modelData.icon || ""
                         size: Theme.iconSize - 2
-                        color: parent.parent.isActive ? Theme.surfaceText : Theme.surfaceText
+                        color: parent.parent.isActive ? Theme.primary : Theme.textSecondary
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
                     StyledText {
                         text: modelData.text || ""
                         font.pixelSize: Theme.fontSizeMedium
-                        color: parent.parent.isActive ? Theme.surfaceText : Theme.surfaceText
+                        color: parent.parent.isActive ? Theme.primary : Theme.textPrimary
                         font.weight: parent.parent.isActive ? Font.Medium : Font.Normal
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -128,6 +149,8 @@ Rectangle {
                 }
 
             }
+
+        }
 
         }
 

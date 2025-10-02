@@ -10,7 +10,7 @@ Item {
     property int spacing: Theme.spacingL
     property int tabHeight: 56
     property bool showIcons: true
-    property bool equalWidthTabs: true
+    property bool equalWidthTabs: false
 
     signal tabClicked(int index)
     signal actionTriggered(int index)
@@ -32,7 +32,13 @@ Item {
                 property bool hasIcon: tabBar.showIcons && modelData && modelData.icon && modelData.icon.length > 0
                 property bool hasText: modelData && modelData.text && modelData.text.length > 0
 
-                width: tabBar.equalWidthTabs ? (tabBar.width - tabBar.spacing * Math.max(0, tabRepeater.count - 1)) / Math.max(1, tabRepeater.count) : Math.max(contentCol.implicitWidth + Theme.spacingXL, 64)
+                width: {
+                    if (tabBar.equalWidthTabs) {
+                        return (tabBar.width - tabBar.spacing * Math.max(0, tabRepeater.count - 1)) / Math.max(1, tabRepeater.count)
+                    }
+                    const minWidth = hasIcon && hasText ? 80 : 64
+                    return Math.max(contentCol.implicitWidth + Theme.spacingXL, minWidth)
+                }
                 height: tabBar.tabHeight
 
                 Column {
@@ -43,8 +49,8 @@ Item {
                     DankIcon {
                         name: modelData.icon || ""
                         anchors.horizontalCenter: parent.horizontalCenter
-                        size: Theme.iconSize
-                        color: tabItem.isActive ? Theme.primary : Theme.surfaceText
+                        size: Theme.iconSize - 2
+                        color: tabItem.isActive ? Theme.primary : Theme.textSecondary
                         visible: hasIcon
                     }
 
@@ -52,8 +58,9 @@ Item {
                         text: modelData.text || ""
                         anchors.horizontalCenter: parent.horizontalCenter
                         font.pixelSize: Theme.fontSizeMedium
-                        color: tabItem.isActive ? Theme.primary : Theme.surfaceText
+                        color: tabItem.isActive ? Theme.primary : Theme.textSecondary
                         font.weight: tabItem.isActive ? Font.Medium : Font.Normal
+                        horizontalAlignment: Text.AlignHCenter
                         visible: hasText
                     }
                 }
@@ -61,8 +68,8 @@ Item {
                 Rectangle {
                     id: stateLayer
                     anchors.fill: parent
-                    color: Theme.surfaceTint
-                    opacity: tabArea.pressed ? 0.12 : (tabArea.containsMouse ? 0.08 : 0)
+                    color: Theme.primary
+                    opacity: tabArea.pressed ? 0.12 : (tabArea.containsMouse ? 0.06 : 0)
                     visible: opacity > 0
                     radius: Theme.cornerRadius
                     Behavior on opacity { NumberAnimation { duration: Theme.shortDuration; easing.type: Theme.standardEasing } }
@@ -90,7 +97,7 @@ Item {
     Rectangle {
         id: indicator
         y: parent.height + 7
-        height: 3
+        height: 2
         width: 60
         topLeftRadius: Theme.cornerRadius
         topRightRadius: Theme.cornerRadius
@@ -123,7 +130,7 @@ Item {
         width: parent.width
         height: 1
         y: parent.height + 10
-        color: Theme.outlineStrong
+        color: Theme.borderMedium
     }
 
     function updateIndicator(enableAnimation = true) {

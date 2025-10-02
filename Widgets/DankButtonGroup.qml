@@ -80,9 +80,9 @@ Flow {
             width: Math.max(contentItem.implicitWidth + root.buttonPadding * 2, root.minButtonWidth) + (selected ? 4 : 0)
             height: root.buttonHeight
 
-            color: selected ? Theme.primaryContainer : Theme.primary
-            border.color: "transparent"
-            border.width: 0
+            color: selected ? Theme.primary : Theme.surfaceElevated
+            border.color: selected ? "transparent" : Theme.borderMedium
+            border.width: selected ? 0 : 1
 
             topLeftRadius: (isFirst || selected) ? Theme.cornerRadius : 4
             bottomLeftRadius: (isFirst || selected) ? Theme.cornerRadius : 4
@@ -139,8 +139,8 @@ Flow {
                 topRightRadius: parent.topRightRadius
                 bottomRightRadius: parent.bottomRightRadius
                 color: {
-                    if (pressed) return selected ? Theme.primaryPressed : Theme.surfacePressed
-                    if (hovered) return selected ? Theme.primaryHover : Theme.surfaceHover
+                    if (pressed) return selected ? Qt.rgba(1, 1, 1, 0.15) : Theme.primaryBackgroundMedium
+                    if (hovered) return selected ? Qt.rgba(1, 1, 1, 0.08) : Theme.primaryBackgroundMedium
                     return "transparent"
                 }
 
@@ -166,7 +166,7 @@ Flow {
                         id: checkIcon
                         name: "check"
                         size: root.checkIconSize
-                        color: segment.selected ? Theme.surfaceText : Theme.primaryText
+                        color: segment.selected ? Qt.rgba(1, 1, 1, 1) : Theme.primary
                         visible: root.checkEnabled && segment.selected
                         opacity: segment.selected ? 1 : 0
                         scale: segment.selected ? 1 : 0.6
@@ -192,7 +192,7 @@ Flow {
                         text: typeof modelData === "string" ? modelData : modelData.text || ""
                         font.pixelSize: root.textSize
                         font.weight: segment.selected ? Font.Medium : Font.Normal
-                        color: segment.selected ? Theme.surfaceText : Theme.primaryText
+                        color: segment.selected ? Qt.rgba(1, 1, 1, 1) : Theme.textPrimary
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }

@@ -284,11 +284,31 @@ Singleton {
     property color outlineMedium: Qt.rgba(outline.r, outline.g, outline.b, 0.08)
     property color outlineStrong: Qt.rgba(outline.r, outline.g, outline.b, 0.12)
 
+    property color borderSubtle: Qt.rgba(outline.r, outline.g, outline.b, 0.15)
+    property color borderMedium: Qt.rgba(outline.r, outline.g, outline.b, 0.25)
+    property color borderStrong: Qt.rgba(outline.r, outline.g, outline.b, 0.35)
+    property color borderPrimary: Qt.rgba(primary.r, primary.g, primary.b, 0.5)
+    property color borderPrimaryStrong: primary
+
     property color errorHover: Qt.rgba(error.r, error.g, error.b, 0.12)
     property color errorPressed: Qt.rgba(error.r, error.g, error.b, 0.16)
 
     property color shadowMedium: Qt.rgba(0, 0, 0, 0.08)
     property color shadowStrong: Qt.rgba(0, 0, 0, 0.3)
+
+    property color surfaceElevated: Qt.lighter(surfaceContainerHigh, 1.08)
+    property color surfaceInteractive: Qt.lighter(surfaceContainerHigh, 1.05)
+    property color surfaceCard: Qt.lighter(surfaceContainer, 1.05)
+    property color surfaceContainerLow: Qt.darker(surfaceContainer, 1.03)
+
+    property color primaryBackgroundMedium: Qt.rgba(primary.r, primary.g, primary.b, 0.12)
+    property color primaryBackgroundStrong: Qt.rgba(primary.r, primary.g, primary.b, 0.18)
+
+    property color textEmphasis: surfaceText
+    property color textPrimary: surfaceText
+    property color textSecondary: Qt.rgba(surfaceText.r, surfaceText.g, surfaceText.b, 0.7)
+    property color textMuted: Qt.rgba(surfaceText.r, surfaceText.g, surfaceText.b, 0.5)
+    property color textDisabled: Qt.rgba(surfaceText.r, surfaceText.g, surfaceText.b, 0.38)
 
     readonly property var animationDurations: [
         { shorter: 0, short: 0, medium: 0, long: 0, extraLong: 0 },
@@ -965,7 +985,7 @@ Singleton {
 
     FileView {
         id: omarchyFileView
-        watchChanges: currentTheme === dynamic
+        watchChanges: currentTheme === dynamic || (typeof SettingsData !== "undefined" && SettingsData.omarchyTheme !== "")
 
         function parseAndLoadOmarchyColors() {
             try {
@@ -996,6 +1016,17 @@ Singleton {
             omarchyColors = {}
             if (currentTheme === dynamic) {
                 generateSystemThemesFromCurrentTheme()
+            }
+        }
+    }
+
+    Connections {
+        target: typeof SettingsData !== "undefined" ? SettingsData : null
+        enabled: target !== null
+
+        function onOmarchyThemeChanged() {
+            if (SettingsData.omarchyTheme && SettingsData.omarchyTheme !== "") {
+                Qt.callLater(root.loadOmarchyColors)
             }
         }
     }

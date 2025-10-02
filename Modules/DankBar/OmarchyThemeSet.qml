@@ -368,10 +368,6 @@ Rectangle {
         if (!displayName || displayName.length === 0)
             return
 
-        const slug = slugify(displayName)
-        if (slug && slug !== slugify(SettingsData.omarchyTheme))
-            SettingsData.setOmarchyTheme(slug)
-
         const command = "omarchy-theme-set " + shellQuote(displayName)
         Quickshell.execDetached(["sh", "-c", command])
         removeFromQueue(displayName)

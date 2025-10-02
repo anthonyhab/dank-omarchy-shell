@@ -20,7 +20,7 @@ Item {
     readonly property bool containsMouse: sliderMouseArea.containsMouse
 
     property color thumbOutlineColor: Theme.surfaceContainer
-    property color trackColor: enabled ? Theme.outline : Theme.outline
+    property color trackColor: enabled ? Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.4) : Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
 
     signal sliderValueChanged(int newValue)
     signal sliderDragFinished(int finalValue)
@@ -81,25 +81,25 @@ Item {
 
                 property bool active: sliderMouseArea.containsMouse || sliderMouseArea.pressed || slider.isDragging
 
-                width: 8
-                height: 24
+                width: active ? 12 : 8
+                height: active ? 28 : 24
                 radius: Theme.cornerRadius
                 x: {
                     const ratio = (slider.value - slider.minimum) / (slider.maximum - slider.minimum)
-                    const travel = sliderTrack.width - width
+                    const travel = sliderTrack.width - (active ? 12 : width)
                     return Math.max(0, Math.min(travel, travel * ratio))
                 }
                 anchors.verticalCenter: parent.verticalCenter
                 color: slider.enabled ? Theme.primary : Theme.withAlpha(Theme.onSurface, 0.12)
-                border.width: 3
-                border.color: slider.thumbOutlineColor
+                border.width: slider.enabled ? 2 : 1
+                border.color: slider.enabled ? Qt.rgba(1, 1, 1, 0.3) : slider.thumbOutlineColor
 
 
                 StyledRect {
                     anchors.fill: parent
                     radius: Theme.cornerRadius
-                    color: Theme.onPrimary
-                    opacity: slider.enabled ? (sliderMouseArea.pressed ? 0.16 : (sliderMouseArea.containsMouse ? 0.08 : 0)) : 0
+                    color: Qt.rgba(1, 1, 1, 1)
+                    opacity: slider.enabled ? (sliderMouseArea.pressed ? 0.2 : (sliderMouseArea.containsMouse ? 0.12 : 0)) : 0
                     visible: opacity > 0
                 }
 
@@ -233,8 +233,8 @@ Item {
                 width: tooltipText.contentWidth + Theme.spacingS * 2
                 height: tooltipText.contentHeight + Theme.spacingXS * 2
                 radius: Theme.cornerRadius
-                color: Theme.surfaceContainer
-                border.color: Theme.outline
+                color: Theme.surfaceElevated
+                border.color: Theme.borderMedium
                 border.width: 1
                 anchors.bottom: parent.top
                 anchors.bottomMargin: Theme.spacingM

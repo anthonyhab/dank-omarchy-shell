@@ -40,6 +40,7 @@ Loader {
         const componentMap = {
             "launcherButton": components.launcherButtonComponent,
             "workspaceSwitcher": components.workspaceSwitcherComponent,
+            "omarchyWorkspaces": components.omarchyWorkspacesComponent,
             "focusedWindow": components.focusedWindowComponent,
             "runningApps": components.runningAppsComponent,
             "clock": components.clockComponent,

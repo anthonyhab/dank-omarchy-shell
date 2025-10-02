@@ -90,10 +90,11 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         radius: Theme.cornerRadius
 
-        color: (checked && enabled) ? Theme.primary : Theme.surfaceVariantAlpha
+        color: (checked && enabled) ? Theme.primary : Qt.rgba(Theme.surfaceVariant.r, Theme.surfaceVariant.g, Theme.surfaceVariant.b, 0.3)
         opacity: toggling ? 0.6 : (enabled ? 1 : 0.4)
 
-        border.color: (!checked || !enabled) ? Theme.outline : "transparent"
+        border.color: (!checked || !enabled) ? Theme.borderMedium : "transparent"
+        border.width: (!checked || !enabled) ? 2 : 0
 
         readonly property int pad: Math.round((height - thumb.width) / 2)
         readonly property int edgeLeft: pad
@@ -107,9 +108,9 @@ Item {
             radius: Theme.cornerRadius
             anchors.verticalCenter: parent.verticalCenter
 
-            color: (checked && enabled) ? Theme.surface : Theme.outline
-            border.color: (checked && enabled) ? Theme.outline : Theme.outline
-            border.width: (checked && enabled) ? 1 : 2
+            color: (checked && enabled) ? Qt.rgba(1, 1, 1, 1) : Qt.rgba(Theme.surfaceText.r, Theme.surfaceText.g, Theme.surfaceText.b, 0.7)
+            border.color: (checked && enabled) ? "transparent" : "transparent"
+            border.width: 0
 
             x: (checked && enabled) ? toggleTrack.edgeRight : toggleTrack.edgeLeft
 
@@ -149,7 +150,7 @@ Item {
                 anchors.centerIn: parent
                 name: "check"
                 size: 20
-                color: Theme.surfaceText
+                color: checked && enabled ? Theme.primary : Theme.surfaceText
                 filled: true
                 opacity: checked && enabled ? 1 : 0
                 scale: checked && enabled ? 1 : 0.6

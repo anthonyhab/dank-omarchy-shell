@@ -18,9 +18,10 @@ PanelWindow {
     property real triggerWidth: 40
     property string triggerSection: ""
     property string positioning: "center"
-    property int animationDuration: Theme.shortDuration
+    property int animationDuration: Theme.mediumDuration
     property var animationEasing: Theme.emphasizedEasing
     property bool shouldBeVisible: false
+    property real defaultBorderOpacity: 0.25
 
     signal opened
     signal popoutClosed

@@ -269,6 +269,7 @@ Item {
         const componentMap = {
             "launcherButton": "launcherButtonComponent",
             "workspaceSwitcher": "workspaceSwitcherComponent",
+            "omarchyWorkspaces": "omarchyWorkspacesComponent",
             "focusedWindow": "focusedWindowComponent",
             "runningApps": "runningAppsComponent",
             "clock": "clockComponent",

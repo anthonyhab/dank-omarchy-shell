@@ -40,12 +40,6 @@ Item {
 
     onAppDataChanged: updateDesktopEntry()
 
-    Connections {
-        target: DesktopEntries
-        function onApplicationsChanged() {
-            updateDesktopEntry()
-        }
-    }
     property bool isWindowFocused: {
         if (!appData) {
             return false

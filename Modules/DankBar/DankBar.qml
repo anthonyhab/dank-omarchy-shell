@@ -424,6 +424,7 @@ Item {
                         readonly property var componentMap: ({
                                                                  "launcherButton": launcherButtonComponent,
                                                                  "workspaceSwitcher": workspaceSwitcherComponent,
+                                                                 "omarchyWorkspaces": omarchyWorkspacesComponent,
                                                                  "focusedWindow": focusedWindowComponent,
                                                                  "runningApps": runningAppsComponent,
                                                                  "clock": clockComponent,
@@ -458,6 +459,7 @@ Item {
                         readonly property var allComponents: ({
                             launcherButtonComponent: launcherButtonComponent,
                             workspaceSwitcherComponent: workspaceSwitcherComponent,
+                            omarchyWorkspacesComponent: omarchyWorkspacesComponent,
                             focusedWindowComponent: focusedWindowComponent,
                             runningAppsComponent: runningAppsComponent,
                             clockComponent: clockComponent,
@@ -615,6 +617,15 @@ Item {
                             id: workspaceSwitcherComponent
 
                             WorkspaceSwitcher {
+                                screenName: barWindow.screenName
+                                widgetHeight: barWindow.widgetThickness
+                            }
+                        }
+
+                        Component {
+                            id: omarchyWorkspacesComponent
+
+                            OmarchyWorkspaces {
                                 screenName: barWindow.screenName
                                 widgetHeight: barWindow.widgetThickness
                             }

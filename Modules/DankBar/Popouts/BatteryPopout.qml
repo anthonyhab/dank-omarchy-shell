@@ -58,8 +58,8 @@ DankPopout {
             implicitHeight: contentColumn.implicitHeight + Theme.spacingL * 2
             color: Theme.popupBackground()
             radius: Theme.cornerRadius
-            border.color: Theme.outlineMedium
-            border.width: 0
+            border.color: Theme.borderMedium
+            border.width: 1
             antialiasing: true
             smooth: true
             focus: true
@@ -303,8 +303,9 @@ DankPopout {
                         width: (parent.width - Theme.spacingM) / 2
                         height: 64
                         radius: Theme.cornerRadius
-                        color: Theme.surfaceContainerHigh
-                        border.width: 0
+                        color: Theme.surfaceElevated
+                        border.color: Theme.borderSubtle
+                        border.width: 1
 
                         Column {
                             anchors.centerIn: parent
@@ -338,8 +339,9 @@ DankPopout {
                         width: (parent.width - Theme.spacingM) / 2
                         height: 64
                         radius: Theme.cornerRadius
-                        color: Theme.surfaceContainerHigh
-                        border.width: 0
+                        color: Theme.surfaceElevated
+                        border.color: Theme.borderSubtle
+                        border.width: 1
 
                         Column {
                             anchors.centerIn: parent

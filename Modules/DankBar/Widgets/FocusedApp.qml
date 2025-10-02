@@ -28,13 +28,6 @@ Rectangle {
     }
 
     Connections {
-        target: DesktopEntries
-        function onApplicationsChanged() {
-            root.updateDesktopEntry()
-        }
-    }
-
-    Connections {
         target: root
         function onActiveWindowChanged() {
             root.updateDesktopEntry()

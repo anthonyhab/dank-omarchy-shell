@@ -21,6 +21,12 @@ Item {
             "icon": "view_module",
             "enabled": true
         }, {
+            "id": "omarchyWorkspaces",
+            "text": "Omarchy Workspaces",
+            "description": "Advanced workspace switcher with smart padding and animations",
+            "icon": "workspaces",
+            "enabled": true
+        }, {
             "id": "focusedWindow",
             "text": "Focused Window",
             "description": "Display currently focused application title",
