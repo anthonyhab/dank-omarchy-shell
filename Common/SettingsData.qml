@@ -12,6 +12,8 @@ import qs.Services
 Singleton {
     id: root
 
+    readonly property bool isGreeterMode: Quickshell.env("DMS_RUN_GREETER") === "1" || Quickshell.env("DMS_RUN_GREETER") === "true"
+
     enum Position {
         Top,
         Bottom,
@@ -1282,9 +1284,11 @@ Singleton {
     }
 
     Component.onCompleted: {
-        loadSettings()
-        fontCheckTimer.start()
-        initializeListModels()
+        if (!isGreeterMode) {
+            loadSettings()
+            fontCheckTimer.start()
+            initializeListModels()
+        }
     }
 
     ListModel {
@@ -1325,20 +1329,22 @@ Singleton {
     FileView {
         id: settingsFile
 
-        path: StandardPaths.writableLocation(StandardPaths.ConfigLocation) + "/DankMaterialShell/settings.json"
+        path: isGreeterMode ? "" : StandardPaths.writableLocation(StandardPaths.ConfigLocation) + "/DankMaterialShell/settings.json"
         blockLoading: true
         blockWrites: true
         atomicWrites: true
-        watchChanges: true
+        watchChanges: !isGreeterMode
         onLoaded: {
-            parseSettings(settingsFile.text())
-            hasTriedDefaultSettings = false
+            if (!isGreeterMode) {
+                parseSettings(settingsFile.text())
+                hasTriedDefaultSettings = false
+            }
         }
         onLoadFailed: error => {
-            if (!hasTriedDefaultSettings) {
+            if (!isGreeterMode && !hasTriedDefaultSettings) {
                 hasTriedDefaultSettings = true
                 defaultSettingsCheckProcess.running = true
-            } else {
+            } else if (!isGreeterMode) {
                 applyStoredTheme()
             }
         }

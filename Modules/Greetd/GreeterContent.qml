@@ -5,6 +5,7 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Greetd
 import Quickshell.Services.Pam
 import Quickshell.Services.Mpris
 import qs.Common
@@ -14,25 +15,33 @@ import qs.Widgets
 Item {
     id: root
 
-    property string passwordBuffer: ""
-    property bool demoMode: false
+    required property var sessionLock
+
     property string screenName: ""
-    property bool unlocking: false
-    property string pamState: ""
     property string randomFact: ""
     property string hyprlandCurrentLayout: ""
     property string hyprlandKeyboard: ""
     property int hyprlandLayoutCount: 0
+    property bool isPrimaryScreen: {
+        if (!Qt.application.screens || Qt.application.screens.length === 0)
+            return true
+        if (!screenName || screenName === "")
+            return true
+        return screenName === Qt.application.screens[0].name
+    }
 
-    signal unlockRequested
+    signal launchRequested
 
-    // Internal power dialog state
     property bool powerDialogVisible: false
     property string powerDialogTitle: ""
     property string powerDialogMessage: ""
     property string powerDialogConfirmText: ""
     property color powerDialogConfirmColor: Theme.primary
     property var powerDialogOnConfirm: function () {}
+
+    function pickRandomFact() {
+        randomFact = Facts.getRandomFact()
+    }
 
     function showPowerDialog(title, message, confirmText, confirmColor, onConfirm) {
         powerDialogTitle = title
@@ -47,28 +56,31 @@ Item {
         powerDialogVisible = false
     }
 
-    function pickRandomFact() {
-        randomFact = Facts.getRandomFact()
-    }
-
     Component.onCompleted: {
-        if (demoMode) {
-            pickRandomFact()
-        }
-
+        pickRandomFact()
         WeatherService.addRef()
-        UserInfoService.refreshUserInfo()
+
+        if (isPrimaryScreen) {
+            sessionListProc.running = true
+            applyLastSuccessfulUser()
+        }
 
         if (CompositorService.isHyprland) {
             updateHyprlandLayout()
             hyprlandLayoutUpdateTimer.start()
         }
     }
-    onDemoModeChanged: {
-        if (demoMode) {
-            pickRandomFact()
+
+    function applyLastSuccessfulUser() {
+        const lastUser = GreetdMemory.lastSuccessfulUser
+        if (lastUser && !GreeterState.showPasswordInput && !GreeterState.username) {
+            GreeterState.username = lastUser
+            GreeterState.usernameInput = lastUser
+            GreeterState.showPasswordInput = true
+            PortalService.getGreeterUserProfileImage(lastUser)
         }
     }
+
     Component.onDestruction: {
         WeatherService.removeRef()
         if (CompositorService.isHyprland) {
@@ -123,16 +135,45 @@ Item {
         onTriggered: updateHyprlandLayout()
     }
 
-    Loader {
-        anchors.fill: parent
-        active: {
-            var currentWallpaper = SessionData.getMonitorWallpaper(screenName)
-            return !currentWallpaper || (currentWallpaper && currentWallpaper.startsWith("#"))
-        }
-        asynchronous: true
+    // ! This was for development and testing, just leaving so people can see how I did it.
+    // Timer {
+    //     id: autoUnlockTimer
+    //     interval: 10000
+    //     running: true
+    //     onTriggered: {
+    //         root.sessionLock.locked = false
+    //         GreeterState.unlocking = true
+    //         const sessionCmd = GreeterState.selectedSession || GreeterState.sessionExecs[GreeterState.currentSessionIndex]
+    //         if (sessionCmd) {
+    //             GreetdMemory.setLastSessionId(sessionCmd.split(" ")[0])
+    //             Greetd.launch(sessionCmd.split(" "), [], true)
+    //         }
+    //     }
+    // }
 
-        sourceComponent: DankBackdrop {
-            screenName: root.screenName
+    Connections {
+        target: GreetdMemory
+        enabled: isPrimaryScreen
+        function onLastSuccessfulUserChanged() {
+            applyLastSuccessfulUser()
+        }
+    }
+
+    Connections {
+        target: GreeterState
+        function onUsernameChanged() {
+            if (GreeterState.username) {
+                PortalService.getGreeterUserProfileImage(GreeterState.username)
+            }
+        }
+    }
+
+    DankBackdrop {
+        anchors.fill: parent
+        screenName: root.screenName
+        visible: {
+            var currentWallpaper = SessionData.getMonitorWallpaper(screenName)
+            return !currentWallpaper || currentWallpaper === "" || (currentWallpaper && currentWallpaper.startsWith("#"))
         }
     }
 
@@ -181,7 +222,6 @@ Item {
 
     SystemClock {
         id: systemClock
-
         precision: SystemClock.Minutes
     }
 
@@ -201,7 +241,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
                 text: {
-                    const format = SettingsData.use24HourClock ? "HH:mm" : "h:mm AP"
+                    const format = GreetdSettings.use24HourClock ? "HH:mm" : "h:mm AP"
                     return systemClock.date.toLocaleTimeString(Qt.locale(), format)
                 }
                 font.pixelSize: 120
@@ -215,8 +255,8 @@ Item {
                 anchors.top: clockText.bottom
                 anchors.topMargin: -20
                 text: {
-                    if (SettingsData.lockDateFormat && SettingsData.lockDateFormat.length > 0) {
-                        return systemClock.date.toLocaleDateString(Qt.locale(), SettingsData.lockDateFormat)
+                    if (GreetdSettings.lockDateFormat && GreetdSettings.lockDateFormat.length > 0) {
+                        return systemClock.date.toLocaleDateString(Qt.locale(), GreetdSettings.lockDateFormat)
                     }
                     return systemClock.date.toLocaleDateString(Qt.locale(), Locale.LongFormat)
                 }
@@ -226,394 +266,307 @@ Item {
             }
         }
 
-        ColumnLayout {
+        Item {
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: 50
-            spacing: Theme.spacingM
+            anchors.verticalCenterOffset: 80
             width: 380
+            height: 140
 
-            RowLayout {
-                spacing: Theme.spacingL
-                Layout.fillWidth: true
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: Theme.spacingM
 
-                DankCircularImage {
-                    Layout.preferredWidth: 60
-                    Layout.preferredHeight: 60
-                    imageSource: {
-                        if (PortalService.profileImage === "") {
-                            return ""
-                        }
-
-                        if (PortalService.profileImage.startsWith("/")) {
-                            return "file://" + PortalService.profileImage
-                        }
-
-                        return PortalService.profileImage
-                    }
-                    fallbackIcon: "person"
-                }
-
-                Rectangle {
-                    property bool showPassword: false
-
+                RowLayout {
+                    spacing: Theme.spacingL
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 60
-                    radius: Theme.cornerRadius
-                    color: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.9)
-                    border.color: passwordField.activeFocus ? Theme.primary : Qt.rgba(1, 1, 1, 0.3)
-                    border.width: passwordField.activeFocus ? 2 : 1
 
-                    DankIcon {
-                        id: lockIcon
-
-                        anchors.left: parent.left
-                        anchors.leftMargin: Theme.spacingM
-                        anchors.verticalCenter: parent.verticalCenter
-                        name: "lock"
-                        size: 20
-                        color: passwordField.activeFocus ? Theme.primary : Theme.surfaceVariantText
-                    }
-
-                    TextInput {
-                        id: passwordField
-
-                        anchors.fill: parent
-                        anchors.leftMargin: lockIcon.width + Theme.spacingM * 2
-                        anchors.rightMargin: {
-                            let margin = Theme.spacingM
-                            if (loadingSpinner.visible) {
-                                margin += loadingSpinner.width
-                            }
-                            if (enterButton.visible) {
-                                margin += enterButton.width + 2
-                            }
-                            if (virtualKeyboardButton.visible) {
-                                margin += virtualKeyboardButton.width
-                            }
-                            if (revealButton.visible) {
-                                margin += revealButton.width
-                            }
-                            return margin
-                        }
-                        opacity: 0
-                        focus: true
-                        enabled: !demoMode
-                        activeFocusOnTab: !demoMode
-                        echoMode: parent.showPassword ? TextInput.Normal : TextInput.Password
-                        onTextChanged: {
-                            if (!demoMode) {
-                                root.passwordBuffer = text
-                            }
-                        }
-                        onAccepted: {
-                            if (!demoMode && !pam.active) {
-                                console.log("Enter pressed, starting PAM authentication")
-                                pam.start()
-                            }
-                        }
-                        Keys.onPressed: event => {
-                                            if (demoMode) {
-                                                return
-                                            }
-
-                                            if (pam.active) {
-                                                console.log("PAM is active, ignoring input")
-                                                event.accepted = true
-                                                return
-                                            }
-                                        }
-
-                        Component.onCompleted: {
-                            if (!demoMode) {
-                                forceActiveFocus()
-                            }
-                        }
-
-                        onVisibleChanged: {
-                            if (visible && !demoMode) {
-                                forceActiveFocus()
-                            }
-                        }
-
-                        onActiveFocusChanged: {
-                            if (!activeFocus && !demoMode && visible && passwordField) {
-                                Qt.callLater(() => {
-                                    if (passwordField && passwordField.forceActiveFocus) {
-                                        passwordField.forceActiveFocus()
-                                    }
-                                })
-                            }
-                        }
-
-                        onEnabledChanged: {
-                            if (enabled && !demoMode && visible && passwordField) {
-                                Qt.callLater(() => {
-                                    if (passwordField && passwordField.forceActiveFocus) {
-                                        passwordField.forceActiveFocus()
-                                    }
-                                })
-                            }
-                        }
-                    }
-
-                    KeyboardController {
-                        id: keyboardController
-                        target: passwordField
-                        rootObject: root
-                    }
-
-                    StyledText {
-                        id: placeholder
-
-                        anchors.left: lockIcon.right
-                        anchors.leftMargin: Theme.spacingM
-                        anchors.right: (revealButton.visible ? revealButton.left : (virtualKeyboardButton.visible ? virtualKeyboardButton.left : (enterButton.visible ? enterButton.left : (loadingSpinner.visible ? loadingSpinner.left : parent.right))))
-                        anchors.rightMargin: 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: {
-                            if (demoMode) {
+                    DankCircularImage {
+                        Layout.preferredWidth: 60
+                        Layout.preferredHeight: 60
+                        imageSource: {
+                            if (PortalService.profileImage === "") {
                                 return ""
                             }
-                            if (root.unlocking) {
-                                return "Unlocking..."
-                            }
-                            if (pam.active) {
-                                return "Authenticating..."
-                            }
-                            return "Password..."
-                        }
-                        color: root.unlocking ? Theme.primary : (pam.active ? Theme.primary : Theme.outline)
-                        font.pixelSize: Theme.fontSizeMedium
-                        opacity: (demoMode || root.passwordBuffer.length === 0) ? 1 : 0
 
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Theme.mediumDuration
-                                easing.type: Theme.standardEasing
+                            if (PortalService.profileImage.startsWith("/")) {
+                                return "file://" + PortalService.profileImage
+                            }
+
+                            return PortalService.profileImage
+                        }
+                        fallbackIcon: "person"
+                    }
+
+                    Rectangle {
+                        property bool showPassword: false
+
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 60
+                        radius: Theme.cornerRadius
+                        color: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.9)
+                        border.color: inputField.activeFocus ? Theme.primary : Qt.rgba(1, 1, 1, 0.3)
+                        border.width: inputField.activeFocus ? 2 : 1
+
+                        DankIcon {
+                            id: lockIcon
+
+                            anchors.left: parent.left
+                            anchors.leftMargin: Theme.spacingM
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: GreeterState.showPasswordInput ? "lock" : "person"
+                            size: 20
+                            color: inputField.activeFocus ? Theme.primary : Theme.surfaceVariantText
+                        }
+
+                        TextInput {
+                            id: inputField
+
+                            anchors.fill: parent
+                            anchors.leftMargin: lockIcon.width + Theme.spacingM * 2
+                            anchors.rightMargin: {
+                                let margin = Theme.spacingM
+                                if (GreeterState.showPasswordInput && revealButton.visible) {
+                                    margin += revealButton.width
+                                }
+                                if (enterButton.visible) {
+                                    margin += enterButton.width + 2
+                                }
+                                return margin
+                            }
+                            opacity: 0
+                            focus: true
+                            echoMode: GreeterState.showPasswordInput ? (parent.showPassword ? TextInput.Normal : TextInput.Password) : TextInput.Normal
+                            onTextChanged: {
+                                if (GreeterState.showPasswordInput) {
+                                    GreeterState.passwordBuffer = text
+                                } else {
+                                    GreeterState.usernameInput = text
+                                }
+                            }
+                            onAccepted: {
+                                if (GreeterState.showPasswordInput) {
+                                    if (Greetd.state === GreetdState.Inactive && GreeterState.username) {
+                                        Greetd.createSession(GreeterState.username)
+                                    }
+                                } else {
+                                    if (text.trim()) {
+                                        GreeterState.username = text.trim()
+                                        GreeterState.showPasswordInput = true
+                                        PortalService.getGreeterUserProfileImage(GreeterState.username)
+                                        GreeterState.passwordBuffer = ""
+                                        inputField.text = ""
+                                    }
+                                }
+                            }
+
+                            Component.onCompleted: {
+                                text = GreeterState.showPasswordInput ? GreeterState.passwordBuffer : GreeterState.usernameInput
+                                if (isPrimaryScreen)
+                                    forceActiveFocus()
+                            }
+                            onVisibleChanged: {
+                                if (visible && isPrimaryScreen)
+                                    forceActiveFocus()
                             }
                         }
 
-                        Behavior on color {
+                        StyledText {
+                            id: placeholder
+
+                            anchors.left: lockIcon.right
+                            anchors.leftMargin: Theme.spacingM
+                            anchors.right: (GreeterState.showPasswordInput && revealButton.visible ? revealButton.left : (enterButton.visible ? enterButton.left : parent.right))
+                            anchors.rightMargin: 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: {
+                                if (GreeterState.unlocking) {
+                                    return "Logging in..."
+                                }
+                                if (Greetd.state !== GreetdState.Inactive) {
+                                    return "Authenticating..."
+                                }
+                                if (GreeterState.showPasswordInput) {
+                                    return "Password..."
+                                }
+                                return "Username..."
+                            }
+                            color: GreeterState.unlocking ? Theme.primary : (Greetd.state !== GreetdState.Inactive ? Theme.primary : Theme.outline)
+                            font.pixelSize: Theme.fontSizeMedium
+                            opacity: (GreeterState.showPasswordInput ? GreeterState.passwordBuffer.length === 0 : GreeterState.usernameInput.length === 0) ? 1 : 0
+
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: Theme.mediumDuration
+                                    easing.type: Theme.standardEasing
+                                }
+                            }
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: Theme.shortDuration
+                                    easing.type: Theme.standardEasing
+                                }
+                            }
+                        }
+
+                        StyledText {
+                            anchors.left: lockIcon.right
+                            anchors.leftMargin: Theme.spacingM
+                            anchors.right: (GreeterState.showPasswordInput && revealButton.visible ? revealButton.left : (enterButton.visible ? enterButton.left : parent.right))
+                            anchors.rightMargin: 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: {
+                                if (GreeterState.showPasswordInput) {
+                                    if (parent.showPassword) {
+                                        return GreeterState.passwordBuffer
+                                    }
+                                    return "•".repeat(Math.min(GreeterState.passwordBuffer.length, 25))
+                                }
+                                return GreeterState.usernameInput
+                            }
+                            color: Theme.surfaceText
+                            font.pixelSize: (GreeterState.showPasswordInput && !parent.showPassword) ? Theme.fontSizeLarge : Theme.fontSizeMedium
+                            opacity: (GreeterState.showPasswordInput ? GreeterState.passwordBuffer.length > 0 : GreeterState.usernameInput.length > 0) ? 1 : 0
+                            elide: Text.ElideRight
+
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: Theme.mediumDuration
+                                    easing.type: Theme.standardEasing
+                                }
+                            }
+                        }
+
+                        DankActionButton {
+                            id: revealButton
+
+                            anchors.right: enterButton.visible ? enterButton.left : parent.right
+                            anchors.rightMargin: enterButton.visible ? 0 : Theme.spacingS
+                            anchors.verticalCenter: parent.verticalCenter
+                            iconName: parent.showPassword ? "visibility_off" : "visibility"
+                            buttonSize: 32
+                            visible: GreeterState.showPasswordInput && GreeterState.passwordBuffer.length > 0 && Greetd.state === GreetdState.Inactive && !GreeterState.unlocking
+                            enabled: visible
+                            onClicked: parent.showPassword = !parent.showPassword
+                        }
+
+                        DankActionButton {
+                            id: enterButton
+
+                            anchors.right: parent.right
+                            anchors.rightMargin: 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            iconName: "keyboard_return"
+                            buttonSize: 36
+                            visible: Greetd.state === GreetdState.Inactive && !GreeterState.unlocking
+                            enabled: true
+                            onClicked: {
+                                if (GreeterState.showPasswordInput) {
+                                    if (GreeterState.username) {
+                                        Greetd.createSession(GreeterState.username)
+                                    }
+                                } else {
+                                    if (inputField.text.trim()) {
+                                        GreeterState.username = inputField.text.trim()
+                                        GreeterState.showPasswordInput = true
+                                        PortalService.getGreeterUserProfileImage(GreeterState.username)
+                                        GreeterState.passwordBuffer = ""
+                                        inputField.text = ""
+                                    }
+                                }
+                            }
+
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: Theme.shortDuration
+                                    easing.type: Theme.standardEasing
+                                }
+                            }
+                        }
+
+                        Behavior on border.color {
                             ColorAnimation {
                                 duration: Theme.shortDuration
                                 easing.type: Theme.standardEasing
                             }
                         }
                     }
+                }
 
-                    StyledText {
-                        anchors.left: lockIcon.right
-                        anchors.leftMargin: Theme.spacingM
-                        anchors.right: (revealButton.visible ? revealButton.left : (virtualKeyboardButton.visible ? virtualKeyboardButton.left : (enterButton.visible ? enterButton.left : (loadingSpinner.visible ? loadingSpinner.left : parent.right))))
-                        anchors.rightMargin: 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: {
-                            if (demoMode) {
-                                return "••••••••"
-                            }
-                            if (parent.showPassword) {
-                                return root.passwordBuffer
-                            }
-                            return "•".repeat(Math.min(root.passwordBuffer.length, 25))
-                        }
-                        color: Theme.surfaceText
-                        font.pixelSize: parent.showPassword ? Theme.fontSizeMedium : Theme.fontSizeLarge
-                        opacity: (demoMode || root.passwordBuffer.length > 0) ? 1 : 0
-                        elide: Text.ElideRight
-
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Theme.mediumDuration
-                                easing.type: Theme.standardEasing
-                            }
-                        }
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 20
+                    Layout.topMargin: -Theme.spacingS
+                    Layout.bottomMargin: -Theme.spacingS
+                    text: {
+                        if (GreeterState.pamState === "error")
+                            return "Authentication error - try again"
+                        if (GreeterState.pamState === "fail")
+                            return "Incorrect password"
+                        return ""
                     }
+                    color: Theme.error
+                    font.pixelSize: Theme.fontSizeSmall
+                    horizontalAlignment: Text.AlignHCenter
+                    opacity: GreeterState.pamState !== "" ? 1 : 0
 
-                    DankActionButton {
-                        id: revealButton
-
-                        anchors.right: virtualKeyboardButton.visible ? virtualKeyboardButton.left : (enterButton.visible ? enterButton.left : (loadingSpinner.visible ? loadingSpinner.left : parent.right))
-                        anchors.rightMargin: 0
-                        anchors.verticalCenter: parent.verticalCenter
-                        iconName: parent.showPassword ? "visibility_off" : "visibility"
-                        buttonSize: 32
-                        visible: !demoMode && root.passwordBuffer.length > 0 && !pam.active && !root.unlocking
-                        enabled: visible
-                        onClicked: parent.showPassword = !parent.showPassword
-                    }
-                    DankActionButton {
-                        id: virtualKeyboardButton
-
-                        anchors.right: enterButton.visible ? enterButton.left : (loadingSpinner.visible ? loadingSpinner.left : parent.right)
-                        anchors.rightMargin: enterButton.visible ? 0 : Theme.spacingS
-                        anchors.verticalCenter: parent.verticalCenter
-                        iconName: "keyboard"
-                        buttonSize: 32
-                        visible: !demoMode && !pam.active && !root.unlocking
-                        enabled: visible
-                        onClicked: {
-                            if (keyboardController.isKeyboardActive) {
-                                keyboardController.hide()
-                            } else {
-                                keyboardController.show()
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        id: loadingSpinner
-
-                        anchors.right: enterButton.visible ? enterButton.left : parent.right
-                        anchors.rightMargin: Theme.spacingM
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 24
-                        height: 24
-                        radius: 12
-                        color: "transparent"
-                        visible: !demoMode && (pam.active || root.unlocking)
-
-                        DankIcon {
-                            anchors.centerIn: parent
-                            name: "check_circle"
-                            size: 20
-                            color: Theme.primary
-                            visible: root.unlocking
-
-                            SequentialAnimation on scale {
-                                running: root.unlocking
-
-                                NumberAnimation {
-                                    from: 0
-                                    to: 1.2
-                                    duration: Anims.durShort
-                                    easing.type: Easing.BezierSpline
-                                    easing.bezierCurve: Anims.emphasizedDecel
-                                }
-
-                                NumberAnimation {
-                                    from: 1.2
-                                    to: 1
-                                    duration: Anims.durShort
-                                    easing.type: Easing.BezierSpline
-                                    easing.bezierCurve: Anims.emphasizedAccel
-                                }
-                            }
-                        }
-
-                        Item {
-                            anchors.fill: parent
-                            visible: pam.active && !root.unlocking
-
-                            Rectangle {
-                                width: 20
-                                height: 20
-                                radius: 10
-                                anchors.centerIn: parent
-                                color: "transparent"
-                                border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.3)
-                                border.width: 2
-                            }
-
-                            Rectangle {
-                                width: 20
-                                height: 20
-                                radius: 10
-                                anchors.centerIn: parent
-                                color: "transparent"
-                                border.color: Theme.primary
-                                border.width: 2
-
-                                Rectangle {
-                                    width: parent.width
-                                    height: parent.height / 2
-                                    anchors.top: parent.top
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    color: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.9)
-                                }
-
-                                RotationAnimation on rotation {
-                                    running: pam.active && !root.unlocking
-                                    loops: Animation.Infinite
-                                    duration: Anims.durLong
-                                    from: 0
-                                    to: 360
-                                }
-                            }
-                        }
-                    }
-
-                    DankActionButton {
-                        id: enterButton
-
-                        anchors.right: parent.right
-                        anchors.rightMargin: 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        iconName: "keyboard_return"
-                        buttonSize: 36
-                        visible: (demoMode || (!pam.active && !root.unlocking))
-                        enabled: !demoMode
-                        onClicked: {
-                            if (!demoMode) {
-                                console.log("Enter button clicked, starting PAM authentication")
-                                pam.start()
-                            }
-                        }
-
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Theme.shortDuration
-                                easing.type: Theme.standardEasing
-                            }
-                        }
-                    }
-
-                    Behavior on border.color {
-                        ColorAnimation {
+                    Behavior on opacity {
+                        NumberAnimation {
                             duration: Theme.shortDuration
                             easing.type: Theme.standardEasing
                         }
                     }
                 }
-            }
 
-            StyledText {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 20
-                text: {
-                    if (root.pamState === "error") {
-                        return "Authentication error - try again"
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 0
+                    Layout.preferredWidth: switchUserRow.width + Theme.spacingL * 2
+                    Layout.preferredHeight: 40
+                    radius: Theme.cornerRadius
+                    color: Theme.surfaceContainer
+                    opacity: GreeterState.showPasswordInput ? 1 : 0
+                    enabled: GreeterState.showPasswordInput
+
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: Theme.mediumDuration
+                            easing.type: Theme.standardEasing
+                        }
                     }
-                    if (root.pamState === "max") {
-                        return "Too many attempts - locked out"
+
+                    Row {
+                        id: switchUserRow
+                        anchors.centerIn: parent
+                        spacing: Theme.spacingS
+
+                        DankIcon {
+                            name: "people"
+                            size: Theme.iconSize - 4
+                            color: Theme.surfaceText
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        StyledText {
+                            text: "Switch User"
+                            font.pixelSize: Theme.fontSizeMedium
+                            color: Theme.surfaceText
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
                     }
-                    if (root.pamState === "fail") {
-                        return "Incorrect password - try again"
+
+                    StateLayer {
+                        stateColor: Theme.primary
+                        cornerRadius: parent.radius
+                        enabled: !GreeterState.unlocking && Greetd.state === GreetdState.Inactive && GreeterState.showPasswordInput
+                        onClicked: {
+                            GreeterState.reset()
+                            inputField.text = ""
+                            PortalService.profileImage = ""
+                        }
                     }
-                    return ""
                 }
-                color: Theme.error
-                font.pixelSize: Theme.fontSizeSmall
-                horizontalAlignment: Text.AlignHCenter
-                opacity: root.pamState !== "" ? 1 : 0
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Theme.shortDuration
-                        easing.type: Theme.standardEasing
-                    }
-                }
             }
-        }
-
-        StyledText {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.margins: Theme.spacingXL
-            text: "DEMO MODE - Click anywhere to exit"
-            font.pixelSize: Theme.fontSizeSmall
-            color: "white"
-            opacity: 0.7
-            visible: demoMode
         }
 
         Row {
@@ -681,9 +634,8 @@ Item {
                 MouseArea {
                     id: keyboardLayoutArea
                     anchors.fill: parent
-                    enabled: !demoMode
-                    hoverEnabled: enabled
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (CompositorService.isNiri) {
                             NiriService.cycleKeyboardLayout()
@@ -775,7 +727,8 @@ Item {
                 StyledText {
                     text: {
                         const player = MprisController.activePlayer
-                        if (!player?.trackTitle) return ""
+                        if (!player?.trackTitle)
+                            return ""
                         const title = player.trackTitle
                         const artist = player.trackArtist || ""
                         return artist ? title + " • " + artist : title
@@ -893,7 +846,7 @@ Item {
                 }
 
                 StyledText {
-                    text: (SettingsData.useFahrenheit ? WeatherService.weather.tempF : WeatherService.weather.temp) + "°"
+                    text: (GreetdSettings.useFahrenheit ? WeatherService.weather.tempF : WeatherService.weather.temp) + "°"
                     font.pixelSize: Theme.fontSizeLarge
                     font.weight: Font.Light
                     color: "white"
@@ -1070,57 +1023,6 @@ Item {
             }
         }
 
-        Row {
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.margins: Theme.spacingXL
-            spacing: Theme.spacingL
-            visible: SettingsData.lockScreenShowPowerActions
-
-            DankActionButton {
-                iconName: "power_settings_new"
-                iconColor: Theme.error
-                buttonSize: 40
-                onClicked: {
-                    if (demoMode) {
-                        console.log("Demo: Power")
-                    } else {
-                        showPowerDialog("Power Off", "Power off this computer?", "Power Off", Theme.error, function () {
-                            SessionService.poweroff()
-                        })
-                    }
-                }
-            }
-
-            DankActionButton {
-                iconName: "refresh"
-                buttonSize: 40
-                onClicked: {
-                    if (demoMode) {
-                        console.log("Demo: Reboot")
-                    } else {
-                        showPowerDialog("Restart", "Restart this computer?", "Restart", Theme.primary, function () {
-                            SessionService.reboot()
-                        })
-                    }
-                }
-            }
-
-            DankActionButton {
-                iconName: "logout"
-                buttonSize: 40
-                onClicked: {
-                    if (demoMode) {
-                        console.log("Demo: Logout")
-                    } else {
-                        showPowerDialog("Log Out", "End this session?", "Log Out", Theme.primary, function () {
-                            SessionService.logout()
-                        })
-                    }
-                }
-            }
-        }
-
         StyledText {
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
@@ -1134,70 +1036,241 @@ Item {
             wrapMode: Text.NoWrap
             visible: root.randomFact !== ""
         }
+
+        Row {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.margins: Theme.spacingXL
+            spacing: Theme.spacingL
+            visible: GreetdSettings.lockScreenShowPowerActions
+
+            DankActionButton {
+                iconName: "power_settings_new"
+                iconColor: Theme.error
+                buttonSize: 40
+                onClicked: {
+                    showPowerDialog("Power Off", "Power off this computer?", "Power Off", Theme.error, function () {
+                        SessionService.poweroff()
+                    })
+                }
+            }
+
+            DankActionButton {
+                iconName: "refresh"
+                buttonSize: 40
+                onClicked: {
+                    showPowerDialog("Restart", "Restart this computer?", "Restart", Theme.primary, function () {
+                        SessionService.reboot()
+                    })
+                }
+            }
+        }
+
+        Item {
+            anchors.bottom: parent.bottom
+            anchors.right: parent.right
+            anchors.margins: Theme.spacingXL
+            width: Math.max(200, currentSessionMetrics.width + 80)
+            height: 60
+
+            StyledTextMetrics {
+                id: currentSessionMetrics
+                text: root.currentSessionName
+            }
+
+            property real longestSessionWidth: {
+                let maxWidth = 0
+                for (var i = 0; i < sessionMetricsRepeater.count; i++) {
+                    const item = sessionMetricsRepeater.itemAt(i)
+                    if (item && item.width > maxWidth) {
+                        maxWidth = item.width
+                    }
+                }
+                return maxWidth
+            }
+
+            Repeater {
+                id: sessionMetricsRepeater
+                model: GreeterState.sessionList
+                delegate: StyledTextMetrics {
+                    text: modelData
+                }
+            }
+
+            DankDropdown {
+                id: sessionDropdown
+                anchors.fill: parent
+                text: ""
+                description: ""
+                currentValue: root.currentSessionName
+                options: GreeterState.sessionList
+                enableFuzzySearch: GreeterState.sessionList.length > 5
+                popupWidthOffset: 0
+                popupWidth: Math.max(250, parent.longestSessionWidth + 100)
+                openUpwards: true
+                alignPopupRight: true
+                onValueChanged: value => {
+                                    const idx = GreeterState.sessionList.indexOf(value)
+                                    if (idx >= 0) {
+                                        GreeterState.currentSessionIndex = idx
+                                        GreeterState.selectedSession = GreeterState.sessionExecs[idx]
+                                        GreetdMemory.setLastSessionId(GreeterState.sessionPaths[idx])
+                                    }
+                                }
+            }
+        }
     }
 
     FileView {
         id: pamConfigWatcher
-
         path: "/etc/pam.d/dankshell"
         printErrors: false
     }
 
-    PamContext {
-        id: pam
+    property int sessionCount: 0
+    property string currentSessionName: GreeterState.sessionList[GreeterState.currentSessionIndex] || ""
+    property int pendingParsers: 0
 
-        config: pamConfigWatcher.loaded ? "dankshell" : "login"
-        onResponseRequiredChanged: {
-            if (demoMode)
-                return
 
-            console.log("PAM response required:", responseRequired)
-            if (!responseRequired)
-                return
-
-            console.log("Responding to PAM with password buffer length:", root.passwordBuffer.length)
-            respond(root.passwordBuffer)
+    function finalizeSessionSelection() {
+        if (GreeterState.sessionList.length === 0) {
+            return
         }
-        onCompleted: res => {
-                         if (demoMode)
-                         return
 
-                         console.log("PAM authentication completed with result:", res)
-                         if (res === PamResult.Success) {
-                             console.log("Authentication successful, unlocking")
-                             root.unlocking = true
-                             passwordField.text = ""
-                             root.passwordBuffer = ""
-                             root.unlockRequested()
-                             return
-                         }
-                         console.log("Authentication failed:", res)
-                         passwordField.text = ""
-                         root.passwordBuffer = ""
-                         if (res === PamResult.Error)
-                         root.pamState = "error"
-                         else if (res === PamResult.MaxTries)
-                         root.pamState = "max"
-                         else if (res === PamResult.Failed)
-                         root.pamState = "fail"
-                         placeholderDelay.restart()
-                     }
+        root.sessionCount = GreeterState.sessionList.length
+
+        const savedSession = GreetdMemory.lastSessionId
+        let foundSaved = false
+        if (savedSession) {
+            for (var i = 0; i < GreeterState.sessionPaths.length; i++) {
+                if (GreeterState.sessionPaths[i] === savedSession) {
+                    GreeterState.currentSessionIndex = i
+                    foundSaved = true
+                    break
+                }
+            }
+        }
+
+        if (!foundSaved) {
+            GreeterState.currentSessionIndex = 0
+        }
+
+        GreeterState.selectedSession = GreeterState.sessionExecs[GreeterState.currentSessionIndex] || GreeterState.sessionExecs[0] || ""
+    }
+
+    Process {
+        id: sessionListProc
+        command: ["find", "/usr/share/wayland-sessions", "/usr/share/xsessions", "-name", "*.desktop", "-type", "f"]
+        running: false
+
+        stdout: SplitParser {
+            onRead: data => {
+                        if (data.trim()) {
+                            root.pendingParsers++
+                            parseDesktopFile(data.trim())
+                        }
+                    }
+        }
+    }
+
+    function parseDesktopFile(path) {
+        const parser = desktopParser.createObject(null, {
+                                                      "desktopPath": path
+                                                  })
+    }
+
+    Component {
+        id: desktopParser
+        Process {
+            property string desktopPath: ""
+            command: ["bash", "-c", `grep -E '^(Name|Exec)=' "${desktopPath}"`]
+            running: true
+
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    const lines = text.split("\n")
+                    let name = ""
+                    let exec = ""
+
+                    for (const line of lines) {
+                        if (line.startsWith("Name=")) {
+                            name = line.substring(5).trim()
+                        } else if (line.startsWith("Exec=")) {
+                            exec = line.substring(5).trim()
+                        }
+                    }
+
+                    if (name && exec) {
+                        if (!GreeterState.sessionList.includes(name)) {
+                            let newList = GreeterState.sessionList.slice()
+                            let newExecs = GreeterState.sessionExecs.slice()
+                            let newPaths = GreeterState.sessionPaths.slice()
+                            newList.push(name)
+                            newExecs.push(exec)
+                            newPaths.push(desktopPath)
+                            GreeterState.sessionList = newList
+                            GreeterState.sessionExecs = newExecs
+                            GreeterState.sessionPaths = newPaths
+                            root.sessionCount = GreeterState.sessionList.length
+                        }
+                    }
+                }
+            }
+
+            onExited: code => {
+                          root.pendingParsers--
+                          if (root.pendingParsers === 0) {
+                              Qt.callLater(root.finalizeSessionSelection)
+                          }
+                          destroy()
+                      }
+        }
+    }
+
+    Connections {
+        target: Greetd
+        enabled: isPrimaryScreen
+
+        function onAuthMessage(message, error, responseRequired, echoResponse) {
+            if (responseRequired) {
+                Greetd.respond(GreeterState.passwordBuffer)
+                GreeterState.passwordBuffer = ""
+                inputField.text = ""
+            } else if (!error) {
+                Greetd.respond("")
+            }
+        }
+
+        function onReadyToLaunch() {
+            root.sessionLock.locked = false
+            GreeterState.unlocking = true
+            const sessionCmd = GreeterState.selectedSession || GreeterState.sessionExecs[GreeterState.currentSessionIndex]
+            if (sessionCmd) {
+                GreetdMemory.setLastSessionId(GreeterState.sessionPaths[GreeterState.currentSessionIndex])
+                GreetdMemory.setLastSuccessfulUser(GreeterState.username)
+                Greetd.launch(sessionCmd.split(" "), ["XDG_SESSION_TYPE=wayland"], true)
+            }
+        }
+
+        function onAuthFailure(message) {
+            GreeterState.pamState = "fail"
+            GreeterState.passwordBuffer = ""
+            inputField.text = ""
+            placeholderDelay.restart()
+        }
+
+        function onError(error) {
+            GreeterState.pamState = "error"
+            placeholderDelay.restart()
+        }
     }
 
     Timer {
         id: placeholderDelay
-
         interval: 4000
-        onTriggered: root.pamState = ""
+        onTriggered: GreeterState.pamState = ""
     }
 
-    MouseArea {
-        anchors.fill: parent
-        enabled: demoMode
-        onClicked: root.unlockRequested()
-    }
-
-    // Internal power dialog
     Rectangle {
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, 0.8)

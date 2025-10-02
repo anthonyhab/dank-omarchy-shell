@@ -83,7 +83,7 @@ PanelWindow {
 
     Item {
         id: contentContainer
-        layer.enabled: false
+        layer.enabled: true
 
         readonly property real screenWidth: root.screen ? root.screen.width : 1920
         readonly property real screenHeight: root.screen ? root.screen.height : 1080

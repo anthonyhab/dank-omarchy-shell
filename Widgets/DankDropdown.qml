@@ -16,6 +16,9 @@ Rectangle {
     property bool enableFuzzySearch: false
     property int popupWidthOffset: 0
     property int maxPopupHeight: 400
+    property bool openUpwards: false
+    property int popupWidth: 0
+    property bool alignPopupRight: false
 
     signal valueChanged(string value)
 
@@ -102,10 +105,33 @@ Rectangle {
                     return
                 }
 
-                const pos = dropdown.mapToItem(Overlay.overlay, 0, dropdown.height + 4)
-                popup.x = pos.x - (root.popupWidthOffset / 2)
-                popup.y = pos.y
-                popup.open()
+                if (root.openUpwards || root.alignPopupRight) {
+                    popup.open()
+                    Qt.callLater(() => {
+                        if (root.openUpwards) {
+                            const pos = dropdown.mapToItem(Overlay.overlay, 0, 0)
+                            if (root.alignPopupRight) {
+                                popup.x = pos.x + dropdown.width - popup.width
+                            } else {
+                                popup.x = pos.x - (root.popupWidthOffset / 2)
+                            }
+                            popup.y = pos.y - popup.height - 4
+                        } else {
+                            const pos = dropdown.mapToItem(Overlay.overlay, 0, dropdown.height + 4)
+                            if (root.alignPopupRight) {
+                                popup.x = pos.x + dropdown.width - popup.width
+                            } else {
+                                popup.x = pos.x - (root.popupWidthOffset / 2)
+                            }
+                            popup.y = pos.y
+                        }
+                    })
+                } else {
+                    const pos = dropdown.mapToItem(Overlay.overlay, 0, dropdown.height + 4)
+                    popup.x = pos.x - (root.popupWidthOffset / 2)
+                    popup.y = pos.y
+                    popup.open()
+                }
             }
         }
 
@@ -213,7 +239,7 @@ Rectangle {
                 }
 
                 parent: Overlay.overlay
-                width: dropdown.width + root.popupWidthOffset
+                width: root.popupWidth > 0 ? root.popupWidth : (dropdown.width + root.popupWidthOffset)
                 height: Math.min(root.maxPopupHeight, (root.enableFuzzySearch ? 54 : 0) + Math.min(filteredOptions.length, 10) * 36 + 16)
                 padding: 0
                 modal: true
@@ -338,8 +364,9 @@ Rectangle {
                                         font.pixelSize: Theme.fontSizeMedium
                                         color: isCurrentValue ? Theme.primary : Theme.surfaceText
                                         font.weight: isCurrentValue ? Font.Medium : Font.Normal
-                                        width: parent.parent.width - parent.x - Theme.spacingS
-                                        elide: Text.ElideRight
+                                        width: root.popupWidth > 0 ? undefined : (parent.parent.width - parent.x - Theme.spacingS)
+                                        elide: root.popupWidth > 0 ? Text.ElideNone : Text.ElideRight
+                                        wrapMode: Text.NoWrap
                                     }
                                 }
 

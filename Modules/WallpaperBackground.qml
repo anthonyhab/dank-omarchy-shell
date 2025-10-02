@@ -11,7 +11,12 @@ LazyLoader {
     active: true
 
     Variants {
-        model: SettingsData.getFilteredScreens("wallpaper")
+        model: {
+            if (SessionData.isGreeterMode) {
+                return Quickshell.screens
+            }
+            return SettingsData.getFilteredScreens("wallpaper")
+        }
 
         PanelWindow {
             id: wallpaperWindow

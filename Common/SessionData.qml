@@ -12,6 +12,8 @@ Singleton {
 
     id: root
 
+    readonly property bool isGreeterMode: Quickshell.env("DMS_RUN_GREETER") === "1" || Quickshell.env("DMS_RUN_GREETER") === "true"
+
     property bool isLightMode: false
     property string wallpaperPath: ""
     property string wallpaperLastPath: ""
@@ -71,11 +73,17 @@ Singleton {
 
 
     Component.onCompleted: {
-        loadSettings()
+        if (!isGreeterMode) {
+            loadSettings()
+        }
     }
 
     function loadSettings() {
-        parseSettings(settingsFile.text())
+        if (isGreeterMode) {
+            parseSettings(greeterSessionFile.text())
+        } else {
+            parseSettings(settingsFile.text())
+        }
     }
 
     function parseSettings(content) {
@@ -142,10 +150,11 @@ Singleton {
                 batterySuspendTimeout = settings.batterySuspendTimeout !== undefined ? settings.batterySuspendTimeout : 0
                 batteryHibernateTimeout = settings.batteryHibernateTimeout !== undefined ? settings.batteryHibernateTimeout : 0
                 lockBeforeSuspend = settings.lockBeforeSuspend !== undefined ? settings.lockBeforeSuspend : false
-                
-                // Generate system themes but don't override user's theme choice
-                if (typeof Theme !== "undefined") {
-                    Theme.generateSystemThemesFromCurrentTheme()
+
+                if (!isGreeterMode) {
+                    if (typeof Theme !== "undefined") {
+                        Theme.generateSystemThemesFromCurrentTheme()
+                    }
                 }
             }
         } catch (e) {
@@ -154,6 +163,7 @@ Singleton {
     }
 
     function saveSettings() {
+        if (isGreeterMode) return
         settingsFile.setText(JSON.stringify({
                                                 "isLightMode": isLightMode,
                                                 "wallpaperPath": wallpaperPath,
@@ -620,18 +630,39 @@ Singleton {
     FileView {
         id: settingsFile
 
-        path: StandardPaths.writableLocation(StandardPaths.GenericStateLocation) + "/DankMaterialShell/session.json"
-        blockLoading: true
+        path: isGreeterMode ? "" : StandardPaths.writableLocation(StandardPaths.GenericStateLocation) + "/DankMaterialShell/session.json"
+        blockLoading: isGreeterMode
         blockWrites: true
-        watchChanges: true
+        watchChanges: !isGreeterMode
         onLoaded: {
-            parseSettings(settingsFile.text())
-            hasTriedDefaultSession = false
+            if (!isGreeterMode) {
+                parseSettings(settingsFile.text())
+                hasTriedDefaultSession = false
+            }
         }
         onLoadFailed: error => {
-            if (!hasTriedDefaultSession) {
-                hasTriedDefaultSession = true
+            if (!isGreeterMode && !hasTriedDefaultSettings) {
+                hasTriedDefaultSettings = true
                 defaultSessionCheckProcess.running = true
+            }
+        }
+    }
+
+    FileView {
+        id: greeterSessionFile
+
+        path: {
+            const greetCfgDir = Quickshell.env("DMS_GREET_CFG_DIR") || "/etc/greetd/.dms"
+            return greetCfgDir + "/session.json"
+        }
+        preload: isGreeterMode
+        blockLoading: false
+        blockWrites: true
+        watchChanges: false
+        printErrors: true
+        onLoaded: {
+            if (isGreeterMode) {
+                parseSettings(greeterSessionFile.text())
             }
         }
     }

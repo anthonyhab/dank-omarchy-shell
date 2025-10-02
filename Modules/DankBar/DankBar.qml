@@ -315,9 +315,10 @@ Item {
                 bottom: barWindow.isVertical ? parent.bottom : undefined
             }
             // Only enable mouse handling while hidden (for reveal-on-edge logic).
-            hoverEnabled: SettingsData.dankBarAutoHide && !topBarCore.reveal
+            readonly property bool inOverview: CompositorService.isNiri && NiriService.inOverview && SettingsData.dankBarOpenOnOverview
+            hoverEnabled: SettingsData.dankBarAutoHide && !topBarCore.reveal && !inOverview
             acceptedButtons: Qt.NoButton
-            enabled: SettingsData.dankBarAutoHide && !topBarCore.reveal
+            enabled: SettingsData.dankBarAutoHide && !topBarCore.reveal && !inOverview
 
             Item {
                 id: topBarContainer

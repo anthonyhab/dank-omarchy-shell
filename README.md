@@ -440,6 +440,12 @@ bindl = , XF86MonBrightnessDown, exec, dms ipc call brightness decrement 5 ""
 bind = SUPERSHIFT, N, exec, dms ipc call night toggle
 ```
 
+## Greeter
+
+You can install a matching [greetd](https://github.com/kennylevinsen/greetd) greeter, that will give you a greeter that matches the lock screen.
+
+It's as simple as running `dms greeter install` in most cases, but more information is in the [Greetd module](Modules/Greetd/README.md)
+
 ## IPC Commands
 
 Control everything from the command line, or via keybinds. For comprehensive documentation of all available IPC commands, see [docs/IPC.md](docs/IPC.md).
